@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Domain.Entities;
 
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+public class EventFlowDbContext : IdentityDbContext<ApplicationUser>
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    public EventFlowDbContext(DbContextOptions<EventFlowDbContext> options)
         : base(options)
     {
     }

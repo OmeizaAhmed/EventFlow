@@ -1,7 +1,6 @@
 namespace EventFlow.Infrastructure.Identity;
 
-using Microsoft.AspNetCore.Identity;   
-using EventFlow.Domain;
+using Microsoft.AspNetCore.Identity;
 
 public class ApplicationUser : IdentityUser
 {
