@@ -1,17 +1,60 @@
 namespace EventFlow.Domain.Entities;
-
-using System.Collections.Generic;
-
+using EventFlow.Domain.Exceptions;
 public class Project
 {
-    public Guid ProjectId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public  string UserId { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public bool IsActive { get; set; } = true;
-    public ICollection<Endpoint> Endpoints { get; set; } = new List<Endpoint>();
-    public ICollection<Event> Events { get; set; } = new List<Event>();
-    public ICollection<EndpointSubscription> EndpointSubscriptions { get; set; } = new List<EndpointSubscription>();
+    public Guid ProjectId { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public bool IsActive { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    private readonly List<ApiKey> _apiKeys = new();
+    public IReadOnlyCollection<ApiKey> ApiKeys => _apiKeys.AsReadOnly();
+
+    private readonly List<WebhookEndpoint> _endpoints = new();
+    public IReadOnlyCollection<WebhookEndpoint> Endpoints => _endpoints.AsReadOnly();
+
+    private Project() { } // EF Core
+
+    public static Project Create(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new DomainException("Project name is required");
+
+        return new Project
+        {
+            ProjectId = Guid.NewGuid(),
+            Name = name,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    public ApiKey GenerateApiKey(string hashedKey, string keyPrefix, bool isLive)
+    {
+        if (!IsActive)
+            throw new DomainException("Cannot generate an API key for an inactive project");
+
+        var key = new ApiKey(ProjectId, hashedKey, keyPrefix, isLive);
+        _apiKeys.Add(key);
+        return key;
+    }
+
+    public void RevokeApiKey(Guid apiKeyId)
+    {
+        var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId)
+                   ?? throw new DomainException("API key not found on this project");
+        key.Revoke();
+    }
+
+    public WebhookEndpoint RegisterEndpoint(string url, string signingSecretValue)
+    {
+        if (!IsActive)
+            throw new DomainException("Cannot register an endpoint on an inactive project");
+
+        var endpoint = WebhookEndpoint.Create(ProjectId, url, signingSecretValue);
+        _endpoints.Add(endpoint);
+        return endpoint;
+    }
+
+    public void Deactivate() => IsActive = false;
 }

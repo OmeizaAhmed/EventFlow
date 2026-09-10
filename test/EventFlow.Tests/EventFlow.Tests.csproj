@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EventFlow.Application\EventFlow.Application.csproj" />
     <ProjectReference Include="..\..\src\EventFlow.Domain\EventFlow.Domain.csproj" />
+    <ProjectReference Include="..\..\src\EventFlow.Infrastructure\EventFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

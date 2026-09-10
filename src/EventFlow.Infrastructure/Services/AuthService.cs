@@ -5,6 +5,7 @@ using EventFlow.Domain.ValueObject;
 using Microsoft.AspNetCore.Identity;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Interfaces;
+using EventFlow.Domain.Exception;
 
 public class AuthService: IAuthRepository
 {
@@ -56,9 +57,24 @@ public class AuthService: IAuthRepository
         return true;
     }
 
-    public Task<UserInfo> GetUserInfoAsync(string userId)
+    public async Task<UserInfo> GetUserInfoAsync(string userId)
     {
-        throw new NotImplementedException();
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            throw new UserNotFoundException("User not found.");
+        }
+
+        var userInfo = new UserInfo
+        {
+            UserId = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Organization = user.Organization,
+            Roles = (await _userManager.GetRolesAsync(user)).ToList()
+        };
+
+        return userInfo;
     }
 
     public Task<bool> UpdateUserInfoAsync(UserInfo userInfo)
@@ -66,13 +82,31 @@ public class AuthService: IAuthRepository
         throw new NotImplementedException();
     }
 
-    public Task<bool> DeleteUserAsync(string userId)
+    public async Task<bool> DeleteUserAsync(string userId)
     {
-        throw new NotImplementedException();
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            throw new UserNotFoundException("User not found.");
+        }
+
+        var result = await _userManager.DeleteAsync(user);
+        return result.Succeeded;
     }
 
-    public Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword)
+    public async Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword)
     {
-        throw new NotImplementedException();
+        var user = await _userManager.FindByIdAsync(userId);
+        if(user == null)
+        {
+            throw new UserNotFoundException("User not found.");
+        }
+        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+        {
+            throw new InvalidCredentialsException("Current password is incorrect.");
+        }
+
+        return true;
     }
 }

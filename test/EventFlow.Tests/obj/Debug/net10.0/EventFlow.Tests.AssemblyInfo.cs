@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EventFlow.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f10fe5f91e7bd7304af235e2510e32bbe42e4fbc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ceff9aac60f6aebae35f4c8888b26ceacb67bdbd")]
 [assembly: System.Reflection.AssemblyProductAttribute("EventFlow.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EventFlow.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
