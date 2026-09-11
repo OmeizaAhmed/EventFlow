@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Domain.Entities;
-using EventFlow.Infrastructure.Configurations;
+using EventFlow.Infrastructure.Persistence.Configurations;
 
 public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
@@ -25,7 +25,7 @@ public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRol
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(EventFlowDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(UserConfiguration).Assembly);
        
     }
 }

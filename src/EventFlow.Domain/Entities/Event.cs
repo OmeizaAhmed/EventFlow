@@ -1,10 +1,11 @@
 namespace EventFlow.Domain.Entities;
 using EventFlow.Domain.Exceptions;
+using EventFlow.Domain.ValueObject;
 public class Event
 {
     public Guid EventId { get; private set; }
     public Guid ProjectId { get; private set; }
-    public string EventType { get; private set; } = string.Empty;
+    public string EventType { get; private set; } = null!;
     public string Payload { get; private set; } = string.Empty; // raw JSON
     public string? IdempotencyKey { get; private set; }
     public DateTime CreatedAt { get; private set; }
