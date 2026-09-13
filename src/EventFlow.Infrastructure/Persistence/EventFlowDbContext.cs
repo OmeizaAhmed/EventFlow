@@ -3,8 +3,8 @@ namespace EventFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using EventFlow.Infrastructure.Identity;
 using EventFlow.Domain.Entities;
+using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Persistence.Configurations;
 
 public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
@@ -14,6 +14,7 @@ public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRol
     {
     }
     public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+    public DbSet<Administrator> Administrators => Set<Administrator>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();
@@ -25,7 +26,7 @@ public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRol
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(UserConfiguration).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(EventFlowDbContext).Assembly);
        
     }
 }

@@ -1,12 +1,10 @@
-namespace EventFlow.Infrastructure.Identity;
-
 using Microsoft.AspNetCore.Identity;
+using System;
 
-public class ApplicationUser : IdentityUser<Guid>
+namespace EventFlow.Infrastructure.Identity
 {
-    public Guid UserId { get; set; }
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string Organization { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
+    public class ApplicationUser : IdentityUser<Guid>
+    {
+        // use base class properties for ID, email, and other identity-related fields
+    }
+}   

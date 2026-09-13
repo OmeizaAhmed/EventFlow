@@ -15,8 +15,6 @@ public class Delivery
     public IReadOnlyCollection<DeliveryAttempt> Attempts => _attempts.AsReadOnly();
     public int AttemptCount => _attempts.Count;
 
-    // EF Core needs a parameterless constructor, but keep it private
-    // so nothing outside the entity can call `new Delivery()` directly.
     private Delivery() { }
 
     public static Delivery Create(Guid eventId, Guid endpointId)
