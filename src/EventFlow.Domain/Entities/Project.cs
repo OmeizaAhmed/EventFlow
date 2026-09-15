@@ -1,11 +1,11 @@
 namespace EventFlow.Domain.Entities;
 using EventFlow.Domain.Exceptions;
+using EventFlow.Domain.Enums;
 public class Project
 {
     public Guid ProjectId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
-    public Guid AdministratorId { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private readonly List<ApiKey> _apiKeys = new();
@@ -16,21 +16,28 @@ public class Project
 
     private Project() { } // EF Core
 
-    public static Project Create(string name, Guid administratorId)
+    public static Project Create(string name, Guid createdByUserId)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("Project name is required");
-        if (administratorId == Guid.Empty)
-            throw new DomainException("Administrator ID is required");
+    
 
-        return new Project
+        var newProject = new Project
         {
             ProjectId = Guid.NewGuid(),
             Name = name,
             IsActive = true,
-            AdministratorId = administratorId,
             CreatedAt = DateTime.UtcNow
         };
+        // create project membership for the creator
+        var membership = ProjectMembership.Invite(
+            createdByUserId,
+            newProject.ProjectId,
+            ProjectMembershipRole.Owner,
+            createdByUserId
+        );
+
+        return newProject;
     }
 
     public ApiKey GenerateApiKey(string hashedKey, string keyPrefix, bool isLive)

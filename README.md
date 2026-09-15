@@ -66,3 +66,9 @@ EventFlow is a webhook and event delivery platform for reliably publishing event
 ## Status
 
 EventFlow is under active development.
+
+
+dotnet ef migrations add InitialCreate --project EventFlow.Infrastructure --startup-project EventFlow.Presentation.Api --output-dir EventFlow.Infrastructure/Persistence/Migrations
+
+
+dotnet ef database update --project src/EventFlow.Infrastructure --startup-project src/EventFlow.Presentation.Api

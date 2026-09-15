@@ -26,6 +26,10 @@ src/**/appsettings.local.json
 src/**/appsettings.*.local.json
 src/**/appsettings.secrets.json
 
+# hide migrations
+src/**/Migrations/
+src/**/Migrations/*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
