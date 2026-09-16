@@ -36,11 +36,10 @@ public class TokenServiceTest
     {
         return new UserInfo
         {
-            UserId = "user-123",
+            UserId = Guid.Parse("00000000-0000-0000-0000-000000000123"),
             Email = "john.doe@example.com",
             FirstName = "John",
             LastName = "Doe",
-            Organization = "Acme Corp",
             Roles = new List<string> { "Admin", "User" }
         };
     }
@@ -69,10 +68,9 @@ public class TokenServiceTest
 
         var claims = jwtToken.Claims.ToList();
 
-        Assert.Equal("user-123", claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value);
+        Assert.Equal("00000000-0000-0000-0000-000000000123", claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value);
         Assert.Equal("John", claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName)?.Value);
         Assert.Equal("Doe", claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.FamilyName)?.Value);
-        Assert.Equal("Acme Corp", claims.FirstOrDefault(c => c.Type == "organization")?.Value);
         Assert.Equal("john.doe@example.com", claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value);
 
         var roleClaims = claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();

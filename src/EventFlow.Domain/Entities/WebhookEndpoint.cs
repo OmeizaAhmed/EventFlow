@@ -18,7 +18,7 @@ public class WebhookEndpoint
     internal static WebhookEndpoint Create(Guid projectId, string url, SigningSecret signingSecret)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != "https")
-            throw new DomainException("Webhook endpoint URL must be a valid HTTPS URL");
+            throw new ValidationException("Webhook endpoint URL must be a valid HTTPS URL");
 
         return new WebhookEndpoint
         {
@@ -34,10 +34,10 @@ public class WebhookEndpoint
     public EventSubscription Subscribe(string eventType)
     {
         if (!IsActive)
-            throw new DomainException("Cannot subscribe an inactive endpoint");
+            throw new ValidationException("Cannot subscribe an inactive endpoint");
 
         if (_subscriptions.Any(s => s.EventType == eventType))
-            throw new DomainException($"Endpoint is already subscribed to {eventType}");
+            throw new ValidationException($"Endpoint is already subscribed to {eventType}");
 
         var subscription = new EventSubscription(EndpointId, eventType);
         _subscriptions.Add(subscription);
@@ -47,9 +47,15 @@ public class WebhookEndpoint
     public void Unsubscribe(string eventType)
     {
         var sub = _subscriptions.FirstOrDefault(s => s.EventType == eventType)
-                   ?? throw new DomainException($"Endpoint is not subscribed to {eventType}");
+                   ?? throw new ValidationException($"Endpoint is not subscribed to {eventType}");
         _subscriptions.Remove(sub);
     }
 
-    public void Deactivate() => IsActive = false;
+    public void Deactivate() 
+    {
+        if (!IsActive)
+            throw new ValidationException("Endpoint is already inactive");
+
+        IsActive = false;
+    }
 }

@@ -19,7 +19,7 @@ public class Project
     public static Project Create(string name, Guid createdByUserId)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Project name is required");
+            throw new ValidationException("Project name is required");
     
 
         var newProject = new Project
@@ -43,7 +43,7 @@ public class Project
     public ApiKey GenerateApiKey(string hashedKey, string keyPrefix, bool isLive)
     {
         if (!IsActive)
-            throw new DomainException("Cannot generate an API key for an inactive project");
+            throw new ValidationException("Cannot generate an API key for an inactive project");
 
         var key = new ApiKey(ProjectId, hashedKey, keyPrefix, isLive);
         _apiKeys.Add(key);
@@ -53,14 +53,14 @@ public class Project
     public void RevokeApiKey(Guid apiKeyId)
     {
         var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId)
-                   ?? throw new DomainException("API key not found on this project");
+                   ?? throw new NotFoundException("Api-key", apiKeyId);
         key.Revoke();
     }
 
     public WebhookEndpoint RegisterEndpoint(string url, string signingSecretValue)
     {
         if (!IsActive)
-            throw new DomainException("Cannot register an endpoint on an inactive project");
+            throw new ValidationException("Cannot register an endpoint on an inactive project");
 
         var endpoint = WebhookEndpoint.Create(ProjectId, url, new ValueObject.SigningSecret(signingSecretValue));
         _endpoints.Add(endpoint);

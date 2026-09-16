@@ -12,7 +12,7 @@ public class UserRepository : IUserRepository
         _context = context;
     }
 
-    public async Task<User> GetUserByIdAsync(Guid userId)
+    public async Task<DomainUser> GetUserByIdAsync(Guid userId)
     {
         var user = await _context.DomainUsers.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
@@ -21,7 +21,7 @@ public class UserRepository : IUserRepository
         }
         return user;
     }
-    public async Task<User> GetUserByEmailAsync(string email)
+    public async Task<DomainUser> GetUserByEmailAsync(string email)
     {
         var user = await _context.DomainUsers.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
@@ -30,12 +30,12 @@ public class UserRepository : IUserRepository
         }
         return user;
     }
-    public async Task AddUserAsync(User user)
+    public async Task AddUserAsync(DomainUser user)
     {
         await _context.DomainUsers.AddAsync(user);
         await _context.SaveChangesAsync();
     }
-    public async Task UpdateUserAsync(User user)
+    public async Task UpdateUserAsync(DomainUser user)
     {
         _context.DomainUsers.Update(user);
         await _context.SaveChangesAsync();

@@ -15,7 +15,7 @@ public class Event
     public static Event Create(Guid projectId, string eventType, string payload, string? idempotencyKey = null)
     {
         if (string.IsNullOrWhiteSpace(payload))
-            throw new DomainException("Event payload cannot be empty");
+            throw new ValidationException("Event payload cannot be empty");
 
         var evt = new Event
         {

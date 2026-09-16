@@ -23,7 +23,7 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
                 .WithMany()
                 .HasForeignKey(pm => pm.ProjectId);
 
-            builder.HasOne<User>()
+            builder.HasOne<DomainUser>()
                 .WithMany()
                 .HasForeignKey(pm => pm.UserId);
         }

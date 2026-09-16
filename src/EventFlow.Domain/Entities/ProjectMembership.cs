@@ -24,10 +24,10 @@ public class ProjectMembership
         Guid? invitedByUserId = null)
     {
         if (userId == Guid.Empty)
-            throw new DomainException("User is required");
+            throw new ValidationException("User is required");
 
         if (projectId == Guid.Empty)
-            throw new DomainException("Project is required");
+            throw new ValidationException("Project is required");
 
         ValidateRole(role);
 
@@ -48,14 +48,14 @@ public class ProjectMembership
     public void UpdateRole(ProjectMembershipRole newRole, Guid modifiedByUserId)
     {
         if (!IsActive)
-            throw new DomainException("Cannot update role for an inactive membership");
+            throw new ValidationException("Cannot update role for an inactive membership");
 
         ValidateRole(newRole);
         // check if modifiedByUserId is valid and has permission to update the role
         if (modifiedByUserId == Guid.Empty)
-            throw new DomainException("Modified by user is required");
+            throw new ValidationException("Modified by user is required");
         if (Role == ProjectMembershipRole.Owner && newRole != ProjectMembershipRole.Owner)
-            throw new DomainException("Owner role cannot be changed through a normal role update. Use transfer ownership");
+            throw new ValidationException("Owner role cannot be changed through a normal role update. Use transfer ownership");
 
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;
@@ -65,10 +65,10 @@ public class ProjectMembership
     public void TransferOwnership(ProjectMembershipRole newRole, Guid changedByUserId)
     {
         if (Role != ProjectMembershipRole.Owner)
-            throw new DomainException("Only the current owner can transfer ownership");
+            throw new ValidationException("Only the current owner can transfer ownership");
 
         if (newRole != ProjectMembershipRole.Owner && newRole != ProjectMembershipRole.Admin)
-            throw new DomainException("Ownership can only be transferred to Owner or Admin roles");
+            throw new ValidationException("Ownership can only be transferred to Owner or Admin roles");
 
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;
@@ -78,7 +78,7 @@ public class ProjectMembership
     public void Deactivate(Guid modifiedByUserId)
     {
         if (!IsActive)
-            throw new DomainException("Membership is already inactive");
+            throw new ValidationException("Membership is already inactive");
 
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
@@ -88,7 +88,7 @@ public class ProjectMembership
     public void Reactivate(Guid modifiedByUserId)
     {
         if (IsActive)
-            throw new DomainException("Membership is already active");
+            throw new ValidationException("Membership is already active");
 
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
@@ -107,7 +107,7 @@ public class ProjectMembership
     private static void ValidateRole(ProjectMembershipRole role)
     {
         if (!Enum.IsDefined(typeof(ProjectMembershipRole), role))
-            throw new DomainException("Invalid project role");
+            throw new ValidationException("Invalid project role");
     }
 }
 

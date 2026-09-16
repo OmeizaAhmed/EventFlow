@@ -32,7 +32,7 @@ public class Delivery
     public void RecordAttempt(int? httpStatusCode, string? errorMessage, bool succeeded)
     {
         if (!CanTransitionTo(succeeded ? DeliveryStatus.Delivered : DeliveryStatus.Failed))
-            throw new DomainException($"Cannot record an attempt while Delivery is {Status}");
+            throw new ValidationException($"Cannot record an attempt while Delivery is {Status}");
 
         _attempts.Add(new DeliveryAttempt(AttemptCount + 1, httpStatusCode, errorMessage, DateTime.UtcNow));
         Status = succeeded ? DeliveryStatus.Delivered : DeliveryStatus.Failed;
@@ -41,7 +41,7 @@ public class Delivery
     public void ScheduleRetry(DateTime retryAt)
     {
         if (Status != DeliveryStatus.Failed)
-            throw new DomainException("Can only schedule a retry from a Failed state");
+            throw new ValidationException("Can only schedule a retry from a Failed state");
 
         Status = DeliveryStatus.RetryScheduled;
         NextRetryAt = retryAt;
@@ -50,7 +50,7 @@ public class Delivery
     public void MarkDeadLetter()
     {
         if (Status != DeliveryStatus.Failed && Status != DeliveryStatus.RetryScheduled)
-            throw new DomainException($"Cannot dead-letter a Delivery in {Status} state");
+            throw new ValidationException($"Cannot dead-letter a Delivery in {Status} state");
 
         Status = DeliveryStatus.DeadLetter;
         NextRetryAt = null;

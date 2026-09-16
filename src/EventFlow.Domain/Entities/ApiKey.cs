@@ -25,7 +25,7 @@ public class ApiKey
 
     internal void Revoke()
     {
-        if (IsRevoked) throw new DomainException("API key is already revoked");
+        if (IsRevoked) throw new ValidationException("API key is already revoked");
         RevokedAt = DateTime.UtcNow;
     }
 }

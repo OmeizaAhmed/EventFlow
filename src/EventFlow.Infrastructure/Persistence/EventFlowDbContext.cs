@@ -14,7 +14,7 @@ public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRol
     {
     }
     public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
-    public DbSet<User> DomainUsers => Set<User>();
+    public DbSet<DomainUser> DomainUsers => Set<DomainUser>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();

@@ -26,11 +26,12 @@ public class TokenService: ITokenService
 
         var claims = new List<System.Security.Claims.Claim>
         {
-            new System.Security.Claims.Claim(JwtRegisteredClaimNames.Sub, userInfo.UserId),
+            new System.Security.Claims.Claim(JwtRegisteredClaimNames.Sub, userInfo.UserId.ToString()),
             new System.Security.Claims.Claim(JwtRegisteredClaimNames.GivenName, userInfo.FirstName),
             new System.Security.Claims.Claim(JwtRegisteredClaimNames.FamilyName, userInfo.LastName),
-            new System.Security.Claims.Claim("organization", userInfo.Organization),
-            new System.Security.Claims.Claim(JwtRegisteredClaimNames.Email, userInfo.Email)
+            new System.Security.Claims.Claim(JwtRegisteredClaimNames.Email, userInfo.Email),
+            new System.Security.Claims.Claim("AuthId", userInfo.AuthId.ToString()),
+            new System.Security.Claims.Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
         foreach (var role in userInfo.Roles)
         {
