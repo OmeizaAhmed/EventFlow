@@ -2,7 +2,7 @@ namespace EventFlow.Tests;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using EventFlow.Domain.ValueObject;
+using EventFlow.Application.DTOs;
 using EventFlow.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Xunit;

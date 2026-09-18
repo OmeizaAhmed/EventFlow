@@ -6,8 +6,8 @@ using EventFlow.Infrastructure.Identity;
 public class IdentityRepository : IIdentityRepository
 {
     private readonly UserManager<ApplicationUser> _userManager; 
-    private readonly RoleManager<IdentityRole> _roleManager;
-    public IdentityRepository(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    public IdentityRepository(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole<Guid>> roleManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -64,7 +64,7 @@ public class IdentityRepository : IIdentityRepository
 
     public async Task CreateRoleAsync(string roleName)
     {
-        var role = new IdentityRole(roleName);
+        var role = new IdentityRole<Guid>(roleName);
         var result = await _roleManager.CreateAsync(role);
         if (!result.Succeeded)
         {
