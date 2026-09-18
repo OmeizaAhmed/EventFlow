@@ -2,8 +2,8 @@ namespace EventFlow.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using EventFlow.Domain.ValueObject;
-using EventFlow.Infrastructure.Interfaces;
+using EventFlow.Application.Interfaces;
+using EventFlow.Application.DTOs;
 public class TokenService: ITokenService
 {
     private readonly IConfiguration _configuration;

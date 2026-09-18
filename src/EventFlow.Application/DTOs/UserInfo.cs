@@ -1,4 +1,4 @@
-namespace EventFlow.Domain.ValueObject;
+namespace EventFlow.Application.DTOs;
 
 public class UserInfo
 {

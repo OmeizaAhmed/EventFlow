@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Services;
-using EventFlow.Infrastructure.Interfaces;
+using EventFlow.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using EventFlow.Domain.Interfaces;
@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddDbContext<EventFlowDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IIdentityRepository, IdentityRepository>();
         services.AddScoped<ITokenService, TokenService>();
     
         return services;
