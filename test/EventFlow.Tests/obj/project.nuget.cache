@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "HeNvZs/g2as=",
+  "dgSpecHash": "5yAgqrgbMIU=",
   "success": true,
   "projectFilePath": "C:\\Users\\HP Elitebook 1040 G8\\Dev\\EventFlow\\test\\EventFlow.Tests\\EventFlow.Tests.csproj",
   "expectedPackageFiles": [
@@ -20,8 +20,8 @@
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.configuration\\10.0.11\\microsoft.extensions.configuration.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\10.0.11\\microsoft.extensions.configuration.abstractions.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.configuration.binder\\10.0.11\\microsoft.extensions.configuration.binder.10.0.11.nupkg.sha512",
-    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\10.0.11\\microsoft.extensions.dependencyinjection.10.0.11.nupkg.sha512",
-    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.11\\microsoft.extensions.dependencyinjection.abstractions.10.0.11.nupkg.sha512",
+    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\10.0.12\\microsoft.extensions.dependencyinjection.10.0.12.nupkg.sha512",
+    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.12\\microsoft.extensions.dependencyinjection.abstractions.10.0.12.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.diagnostics\\10.0.11\\microsoft.extensions.diagnostics.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.diagnostics.abstractions\\10.0.11\\microsoft.extensions.diagnostics.abstractions.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.identity.core\\10.0.11\\microsoft.extensions.identity.core.10.0.11.nupkg.sha512",

@@ -5,7 +5,7 @@ using EventFlow.Domain.Interfaces;
 using EventFlow.Application.DTOs;
 
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly IIdentityRepository _identityRepository;
     private readonly IUserRepository _userRepository;

@@ -1,8 +1,10 @@
 using EventFlow.Infrastructure;
+using EventFlow.Application;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddEventFlowInfrastructure(builder.Configuration);
+builder.Services.AddApplicationServices();
 
 var app = builder.Build();
 
