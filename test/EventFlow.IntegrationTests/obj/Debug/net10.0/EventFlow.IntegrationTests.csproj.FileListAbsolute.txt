@@ -146,3 +146,4 @@ C:\Users\HP Elitebook 1040 G8\Dev\EventFlow\test\EventFlow.IntegrationTests\obj\
 C:\Users\HP Elitebook 1040 G8\Dev\EventFlow\test\EventFlow.IntegrationTests\obj\Debug\net10.0\EventFlow.IntegrationTests.pdb
 C:\Users\HP Elitebook 1040 G8\Dev\EventFlow\test\EventFlow.IntegrationTests\obj\Debug\net10.0\EventFlow.IntegrationTests.genruntimeconfig.cache
 C:\Users\HP Elitebook 1040 G8\Dev\EventFlow\test\EventFlow.IntegrationTests\obj\Debug\net10.0\ref\EventFlow.IntegrationTests.dll
+C:\Users\HP Elitebook 1040 G8\Dev\EventFlow\test\EventFlow.IntegrationTests\bin\Debug\net10.0\Scalar.AspNetCore.dll

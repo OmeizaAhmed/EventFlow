@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using EventFlow.Application.Interfaces;
 using EventFlow.Application.DTOs;
-using System.Threading.Tasks;
 
 namespace EventFlow.Presentation.Api.Controllers;
 

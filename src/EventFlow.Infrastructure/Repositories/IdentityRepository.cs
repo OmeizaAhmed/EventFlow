@@ -2,6 +2,7 @@ namespace EventFlow.Infrastructure.Repositories;
 using EventFlow.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using EventFlow.Infrastructure.Identity;
+using EventFlow.Application.DTOs;
 
 public class IdentityRepository : IIdentityRepository
 {
@@ -13,15 +14,18 @@ public class IdentityRepository : IIdentityRepository
         _roleManager = roleManager;
     }
 
-    public async Task<Guid> CreateIdentityAsync(string email, string password)
+    public async Task<IdentityInfo> CreateIdentityAsync(string email, string password)
     {
+        // check if the user already exists
+        var existingUser = await _userManager.FindByNameAsync(email);
         var user = new ApplicationUser { UserName = email, Email = email };
+
         var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
             throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
         }
-        return user.Id;
+        return new IdentityInfo { Id = user.Id, Email = user.Email };
     }
 
     public async Task<bool> CheckPasswordAsync(string username, string password)
@@ -96,5 +100,13 @@ public class IdentityRepository : IIdentityRepository
         return roles;
     }
 
-    
+    public async Task<IdentityInfo?> GetIdentityByEmailAsync(string email)
+    {
+        var user = await _userManager.FindByNameAsync(email);
+        if (user == null)
+        {
+            return null;
+        }
+        return new IdentityInfo { Id = user.Id, Email = user.Email };
+    }
 }

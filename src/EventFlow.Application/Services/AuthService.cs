@@ -3,7 +3,7 @@ using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Domain.Interfaces;
 using EventFlow.Application.DTOs;
-
+using EventFlow.Domain.Exceptions;
 
 public class AuthService : IAuthService
 {
@@ -20,19 +20,30 @@ public class AuthService : IAuthService
 
     public async Task RegisterUserAsync(RegisterInput registerInput)
     {
+        // regex to validate password is (?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}
+        if (!System.Text.RegularExpressions.Regex.IsMatch(registerInput.Password, @"(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}"))
+        {
+            throw new ValidationException("Password must be at least 8 characters long and contain both letters and numbers");
+        }
+        // check if email already exists
+        var existingIdentity = await _identityRepository.GetIdentityByEmailAsync(registerInput.Email);
+        if (existingIdentity != null)
+        {
+            throw new ConflictException($"Email '{registerInput.Email}' is already registered");
+        }
         // add user to identity repository
-        var identityId = await _identityRepository.CreateIdentityAsync(registerInput.Email, registerInput.Password);
+        var identity= await _identityRepository.CreateIdentityAsync(registerInput.Email, registerInput.Password);
         // add user to domain repository
-        var User = DomainUser.Create(registerInput.Email, registerInput.FirstName, registerInput.LastName, identityId);
+        var User = DomainUser.Create(registerInput.Email, registerInput.FirstName, registerInput.LastName, identity.Id);
         await _userRepository.AddUserAsync(User);
-    }
+    } 
 
     public async Task<string> LoginUserAsync(string email, string password)
     {
         var isPasswordValid = await _identityRepository.CheckPasswordAsync(email, password);
         if (!isPasswordValid)
         {
-            throw new Exception("Invalid email or password");
+            throw new ValidationException("Invalid email or password");
         }
 
         var user = await _userRepository.GetUserByEmailAsync(email);
