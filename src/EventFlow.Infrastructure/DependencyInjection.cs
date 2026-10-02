@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IIdentityRepository, IdentityRepository>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IRefreshRepository, RefreshRepository>();
     
         return services;
     }

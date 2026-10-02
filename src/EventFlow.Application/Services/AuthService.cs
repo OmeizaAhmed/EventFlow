@@ -10,12 +10,14 @@ public class AuthService : IAuthService
     private readonly IIdentityRepository _identityRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
+    private readonly IRefreshRepository _refreshRepository;
 
-    public AuthService(IIdentityRepository identityRepository, IUserRepository userRepository, ITokenService tokenService)
+    public AuthService(IIdentityRepository identityRepository, IUserRepository userRepository, ITokenService tokenService, IRefreshRepository refreshRepository)
     {
         _identityRepository = identityRepository;
         _userRepository = userRepository;
         _tokenService = tokenService;
+        _refreshRepository = refreshRepository;
     }
 
     public async Task RegisterUserAsync(RegisterInput registerInput)
@@ -56,8 +58,27 @@ public class AuthService : IAuthService
             AuthId = user.AuthId,
             Roles = await _identityRepository.GetIdentityRolesAsync(user.AuthId)
         };
+        // create refresh token for the user
+        var refreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7));
+        await AddRefreshTokenAsync(refreshToken);
+        
         return _tokenService.GenerateToken(userInfo);
     }
 
-    
+    public async Task AddRefreshTokenAsync(RefreshToken refreshToken)
+    {
+        _refreshRepository.AddRefreshTokenAsync(refreshToken);
+        await _refreshRepository.SaveChangesAsync();
+    }
+
+    public async Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken)
+    {
+        return await _refreshRepository.GetRefreshTokenAsync(refreshToken);
+    }
+
+    public async Task DeleteRefreshTokenAsync(string refreshToken)
+    {
+        await _refreshRepository.DeleteRefreshTokenAsync(refreshToken);
+        await _refreshRepository.SaveChangesAsync();
+    }
 }
