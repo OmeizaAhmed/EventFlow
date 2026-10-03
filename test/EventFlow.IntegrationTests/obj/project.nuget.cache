@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "R0w90fbniZM=",
+  "dgSpecHash": "WkhPvPgyJ68=",
   "success": true,
   "projectFilePath": "C:\\Users\\HP Elitebook 1040 G8\\Dev\\EventFlow\\test\\EventFlow.IntegrationTests\\EventFlow.IntegrationTests.csproj",
   "expectedPackageFiles": [
@@ -58,16 +58,13 @@
   ],
   "logs": [
     {
-      "code": "NU1903",
+      "code": "NU1900",
       "level": "Warning",
-      "message": "Package 'Microsoft.OpenApi' 2.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
+      "message": "Error occurred while getting package vulnerability data: An error occurred while sending the request.",
       "projectPath": "C:\\Users\\HP Elitebook 1040 G8\\Dev\\EventFlow\\test\\EventFlow.IntegrationTests\\EventFlow.IntegrationTests.csproj",
       "warningLevel": 1,
       "filePath": "C:\\Users\\HP Elitebook 1040 G8\\Dev\\EventFlow\\test\\EventFlow.IntegrationTests\\EventFlow.IntegrationTests.csproj",
-      "libraryId": "Microsoft.OpenApi",
-      "targetGraphs": [
-        "net10.0"
-      ]
+      "targetGraphs": []
     }
   ]
 }

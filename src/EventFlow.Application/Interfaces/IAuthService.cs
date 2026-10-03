@@ -4,5 +4,6 @@ using EventFlow.Application.DTOs;
 public interface IAuthService
 {
     Task RegisterUserAsync(RegisterInput registerInput);
-    Task<string> LoginUserAsync(string email, string password);
+    Task<AuthOutput> LoginUserAsync(string email, string password);
+    Task<AuthOutput> RefreshTokenAsync(string refreshToken);
 }

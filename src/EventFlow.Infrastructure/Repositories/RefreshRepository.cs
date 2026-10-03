@@ -13,9 +13,10 @@ public class RefreshRepository : IRefreshRepository
     {
         _context = context;
     }
-    public void AddRefreshTokenAsync(RefreshToken refreshToken)
+    public async Task AddRefreshTokenAsync(RefreshToken refreshToken)
     {
         _context.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken)
@@ -30,6 +31,7 @@ public class RefreshRepository : IRefreshRepository
         {
             _context.RefreshTokens.Remove(token);
         }
+        await _context.SaveChangesAsync();
     }
 
     public Task SaveChangesAsync()
