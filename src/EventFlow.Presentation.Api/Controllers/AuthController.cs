@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using EventFlow.Application.Interfaces;
 using EventFlow.Application.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EventFlow.Presentation.Api.Controllers;
 
@@ -41,6 +42,20 @@ public class AuthController : ControllerBase
         var auth = await _authService.RefreshTokenAsync(refreshToken);
         AddRefreshCookies(auth.RefreshToken, Response);
         return Ok(new { Token = auth.AccessToken });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        RemoveRefreshCookies(Response);
+        return Ok();
+    }
+
+    [HttpGet("secure")]
+    [Authorize]
+    public IActionResult Secure()
+    {
+        return Ok("I am Secure");
     }
 
     private void AddRefreshCookies(string refreshToken, HttpResponse response)

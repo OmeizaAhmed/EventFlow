@@ -3,6 +3,7 @@ namespace EventFlow.Infrastructure.Repositories;
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 public class RefreshRepository : IRefreshRepository
@@ -21,7 +22,8 @@ public class RefreshRepository : IRefreshRepository
 
     public async Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken)
     {
-        return await _context.RefreshTokens.FindAsync(refreshToken);
+        var token = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+        return token;
     }
 
     public async Task DeleteRefreshTokenAsync(string refreshToken)

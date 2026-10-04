@@ -22,10 +22,10 @@ public class AuthService : IAuthService
 
     public async Task RegisterUserAsync(RegisterInput registerInput)
     {
-        // regex to validate password is (?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}
-        if (!System.Text.RegularExpressions.Regex.IsMatch(registerInput.Password, @"(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}"))
+        // regex to validate password is numeric and alphabetic and symbol and at least 8 characters long
+        if (!System.Text.RegularExpressions.Regex.IsMatch(registerInput.Password, @"(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}"))
         {
-            throw new ValidationException("Password must be at least 8 characters long and contain both letters and numbers");
+            throw new ValidationException("Password must be at least 8 characters long and contain letters, numbers, and symbols");
         }
         // check if email already exists
         var existingIdentity = await _identityRepository.GetIdentityByEmailAsync(registerInput.Email);

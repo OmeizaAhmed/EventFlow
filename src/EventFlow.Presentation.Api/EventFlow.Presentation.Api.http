@@ -1,6 +1,19 @@
 @HostAddress = http://localhost:5001
+@SecureAddress = https://localhost:7056
+@bearerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNmRjOGVmNy1lNTc3LTQwZmEtYWJkZC02NDkzNWQ0MmRjY2UiLCJnaXZlbl9uYW1lIjoiWW91bmciLCJmYW1pbHlfbmFtZSI6IlRodWciLCJlbWFpbCI6InNwaWRlckBldmVudGZsb3cuY29tIiwiQXV0aElkIjoiMDFhMTAzMWQtYTAwNS03ZmE1LWEzNDItYmE3ZGNmZTVhYzE2IiwianRpIjoiMzQzOThkZDEtYThhNS00NmI0LWIwODUtODc1MmY1OTYxMzlkIiwiZXhwIjoxNzkxMTExNTAwLCJpc3MiOiJFdmVudEZsb3ciLCJhdWQiOiJFdmVudEZsb3cifQ.4_1W5-Yj75Us3JCcu4zbdSeIToxL9krgYL-jP_ZvIgI
 
 GET {{HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+
+Post {{SecureAddress}}/api/auth/secure
+Content-Type: application/json
+Authorization: Bearer {{bearerToken}}
+
+### 
+
+GET {{SecureAddress}}/secure
+Accept: application/json
+Authorization: Bearer {{bearerToken}}

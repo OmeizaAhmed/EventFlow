@@ -1,13 +1,16 @@
-using Microsoft.Extensions.DependencyInjection;
-using EventFlow.Infrastructure.Persistence;
-using EventFlow.Infrastructure.Services;
 using EventFlow.Application.Interfaces;
+using EventFlow.Domain.Interfaces;
+using EventFlow.Infrastructure.Identity;
+using EventFlow.Infrastructure.Persistence;
+using EventFlow.Infrastructure.Repositories;
+using EventFlow.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using EventFlow.Domain.Interfaces;
-using EventFlow.Infrastructure.Repositories;
-using EventFlow.Infrastructure.Identity;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
 namespace EventFlow.Infrastructure;
 public static class DependencyInjection
 {
@@ -33,7 +36,28 @@ public static class DependencyInjection
         services.AddScoped<IIdentityRepository, IdentityRepository>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshRepository, RefreshRepository>();
-    
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = configuration["JwtSettings:Issuer"],
+            ValidAudience = configuration["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured"))),
+            ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero to prevent token expiration issues
+
+        };
+    });
+        services.AddAuthorizationBuilder().SetDefaultPolicy(new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build() );
+       
+
         return services;
     }
 }

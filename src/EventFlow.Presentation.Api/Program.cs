@@ -2,15 +2,38 @@ using EventFlow.Infrastructure;
 using EventFlow.Application;
 using EventFlow.Domain.Exceptions;
 using Scalar.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();  
+builder.Services.AddControllers();
 builder.Services.AddEventFlowInfrastructure(builder.Configuration);
 builder.Services.AddApplicationServices();
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+//    { 
+//        options.RequireHttpsMetadata = false;
+//        options.TokenValidationParameters = new TokenValidationParameters
+//        {
+//            ValidateIssuer = true,
+//            ValidateAudience = true,
+//            ValidateLifetime = true,
+//            ValidateIssuerSigningKey = true,
+//            ValidIssuer = builder.Configuration["Authentication:Issuer"],
+//            ValidAudience = builder.Configuration["Authentication:Audience"],
+//            IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Authentication:SecretKey"]?? throw new InvalidOperationException("Authentication:SecretKey is not configured"))),
+//            ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero to prevent token expiration issues
+
+//        };
+//    });
+//builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 app.UseMiddleware<GlobalErrorHandler>();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -21,6 +44,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 app.MapGet("/", () => "I am Root");
+app.MapGet("/secure", () => "I am Secure").RequireAuthorization();
 
 app.Run();
 
