@@ -52,7 +52,7 @@ public class Project
 
     public void RevokeApiKey(Guid apiKeyId)
     {
-        var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId)
+        var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId && k.ProjectId == ProjectId)
                    ?? throw new NotFoundException("Api-key", apiKeyId);
         key.Revoke();
     }

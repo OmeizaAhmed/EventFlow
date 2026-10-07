@@ -2,6 +2,7 @@ namespace EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
 
 using EventFlow.Domain.Exceptions;
+using System.Runtime.CompilerServices;
 
 public class ProjectMembership
 {
@@ -16,19 +17,33 @@ public class ProjectMembership
     public Guid? LastModifiedByUserId { get; private set; }
 
     private ProjectMembership() { }
-
-    public static ProjectMembership Invite(
-        Guid userId,
-        Guid projectId,
-        ProjectMembershipRole role,
-        Guid? invitedByUserId = null)
+    public static ProjectMembership Create(Guid userId, Guid projectId)
     {
         if (userId == Guid.Empty)
             throw new ValidationException("User is required");
-
         if (projectId == Guid.Empty)
             throw new ValidationException("Project is required");
+        
+        return new ProjectMembership
+        {
+            ProjectMembershipId = Guid.NewGuid(),
+            UserId = userId,
+            ProjectId = projectId,
+            Role = ProjectMembershipRole.Owner,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            InvitedByUserId = userId,
+            LastModifiedByUserId = userId
+        };
+    }
 
+    public static ProjectMembership Create(Guid userId, Guid projectId, ProjectMembershipRole role)
+    {
+        if (userId == Guid.Empty)
+            throw new ValidationException("User is required");
+        if (projectId == Guid.Empty)
+            throw new ValidationException("Project is required");
         ValidateRole(role);
 
         return new ProjectMembership
@@ -40,60 +55,99 @@ public class ProjectMembership
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            InvitedByUserId = invitedByUserId,
-            LastModifiedByUserId = invitedByUserId
+            InvitedByUserId = userId,
+            LastModifiedByUserId = userId
+        };
+    }
+    public ProjectMembership Invite(
+        Guid userId, ProjectMembershipRole? role = null)
+    {
+        if (userId == Guid.Empty)
+            throw new ValidationException("User is required");
+        if (!this.IsActive)
+            throw new ValidationException("Host project membership is inactive");
+        if(!this.CanManageMemberships())
+            throw new ValidationException("Host project membership does not have permission to invite new members");
+
+
+        ValidateRole(role ?? ProjectMembershipRole.ReadOnly);
+
+        return new ProjectMembership
+        {
+            ProjectMembershipId = Guid.NewGuid(),
+            UserId = userId,
+            ProjectId = this.ProjectId,
+            Role = role ?? ProjectMembershipRole.ReadOnly,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            InvitedByUserId = this.UserId,
+            LastModifiedByUserId = this.UserId
         };
     }
 
-    public void UpdateRole(ProjectMembershipRole newRole, Guid modifiedByUserId)
+    public void UpdateRole(ProjectMembershipRole newRole, ProjectMembership Modifier)
     {
         if (!IsActive)
             throw new ValidationException("Cannot update role for an inactive membership");
 
         ValidateRole(newRole);
-        // check if modifiedByUserId is valid and has permission to update the role
-        if (modifiedByUserId == Guid.Empty)
-            throw new ValidationException("Modified by user is required");
+        // check if Modifier is valid and has permission to update the role
+        if (Modifier == null)
+            throw new ValidationException("Modifier is required");
+        if (!Modifier.CanManageMemberships())
+            throw new ValidationException("Modifier does not have permission to update the role");
         if (Role == ProjectMembershipRole.Owner && newRole != ProjectMembershipRole.Owner)
             throw new ValidationException("Owner role cannot be changed through a normal role update. Use transfer ownership");
 
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = modifiedByUserId;
+        LastModifiedByUserId = Modifier.UserId;
     }
 
-    public void TransferOwnership(ProjectMembershipRole newRole, Guid changedByUserId)
+    public void TransferOwnership(ProjectMembership Owner)
     {
-        if (Role != ProjectMembershipRole.Owner)
+        if (Owner.Role != ProjectMembershipRole.Owner)
             throw new ValidationException("Only the current owner can transfer ownership");
 
-        if (newRole != ProjectMembershipRole.Owner && newRole != ProjectMembershipRole.Admin)
+        if (Role != ProjectMembershipRole.Owner && Role != ProjectMembershipRole.Admin)
             throw new ValidationException("Ownership can only be transferred to Owner or Admin roles");
 
-        Role = newRole;
+        Role = ProjectMembershipRole.Owner;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = changedByUserId;
+        LastModifiedByUserId = Owner.UserId;
     }
 
-    public void Deactivate(Guid modifiedByUserId)
+    public void Deactivate(ProjectMembership Modifier)
     {
         if (!IsActive)
             throw new ValidationException("Membership is already inactive");
 
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = modifiedByUserId;
+        LastModifiedByUserId = Modifier.UserId;
     }
 
-    public void Reactivate(Guid modifiedByUserId)
+    public void Reactivate(ProjectMembership Modifier)
     {
         if (IsActive)
             throw new ValidationException("Membership is already active");
 
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = modifiedByUserId;
+        LastModifiedByUserId = Modifier.UserId;
     }
+
+    public bool CanManageApiKeys()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+    public bool CanManageWebhooks()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+    
+    public bool CanManageEvents()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer;
+
+    public bool CanManageEndpoints()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
 
     public bool CanManageMemberships()
         => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;

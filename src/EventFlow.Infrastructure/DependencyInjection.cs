@@ -17,8 +17,10 @@ public static class DependencyInjection
     public static IServiceCollection AddEventFlowInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Register your infrastructure services here
+        // DB Context
         services.AddDbContext<EventFlowDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        // Identity
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {
             options.Password.RequireDigit = true;
@@ -32,10 +34,13 @@ public static class DependencyInjection
             options.Lockout.AllowedForNewUsers = true;
         })
             .AddEntityFrameworkStores<EventFlowDbContext>();
+        // Repositories 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IIdentityRepository, IdentityRepository>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshRepository, RefreshRepository>();
+
+        // Authentication and Authorization
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
