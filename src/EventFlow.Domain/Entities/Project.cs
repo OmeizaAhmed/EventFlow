@@ -16,7 +16,7 @@ public class Project
 
     private Project() { } // EF Core
 
-    public static Project Create(string name, Guid createdByUserId)
+    public static ProjectCreationResponse Create(string name, Guid createdByUserId)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ValidationException("Project name is required");
@@ -30,14 +30,9 @@ public class Project
             CreatedAt = DateTime.UtcNow
         };
         // create project membership for the creator
-        var membership = ProjectMembership.Invite(
-            createdByUserId,
-            newProject.ProjectId,
-            ProjectMembershipRole.Owner,
-            createdByUserId
-        );
-
-        return newProject;
+        var membership = ProjectMembership.Create(userId: createdByUserId, projectId: newProject.ProjectId);
+        
+        return new ProjectCreationResponse(newProject, membership);
     }
 
     public ApiKey GenerateApiKey(string hashedKey, string keyPrefix, bool isLive)
@@ -68,4 +63,6 @@ public class Project
     }
 
     public void Deactivate() => IsActive = false;
-}
+
+} 
+public record ProjectCreationResponse(Project Project, ProjectMembership Membership);

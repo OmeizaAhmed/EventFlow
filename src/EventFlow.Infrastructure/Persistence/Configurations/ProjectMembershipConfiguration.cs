@@ -17,6 +17,7 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
             builder.Property(pm => pm.LastModifiedByUserId).IsRequired(false);
             builder.Property(pm => pm.CreatedAt).IsRequired();
             builder.Property(pm => pm.UpdatedAt).IsRequired();
+            builder.HasIndex(pm => new { pm.ProjectId, pm.UserId }).IsUnique();
 
             // relationships
             builder.HasOne<Project>()

@@ -17,7 +17,7 @@ public class ProjectMembership
     public Guid? LastModifiedByUserId { get; private set; }
 
     private ProjectMembership() { }
-    public static ProjectMembership Create(Guid userId, Guid projectId)
+    internal static ProjectMembership Create(Guid userId, Guid projectId)
     {
         if (userId == Guid.Empty)
             throw new ValidationException("User is required");
@@ -38,27 +38,7 @@ public class ProjectMembership
         };
     }
 
-    public static ProjectMembership Create(Guid userId, Guid projectId, ProjectMembershipRole role)
-    {
-        if (userId == Guid.Empty)
-            throw new ValidationException("User is required");
-        if (projectId == Guid.Empty)
-            throw new ValidationException("Project is required");
-        ValidateRole(role);
-
-        return new ProjectMembership
-        {
-            ProjectMembershipId = Guid.NewGuid(),
-            UserId = userId,
-            ProjectId = projectId,
-            Role = role,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            InvitedByUserId = userId,
-            LastModifiedByUserId = userId
-        };
-    }
+    
     public ProjectMembership Invite(
         Guid userId, ProjectMembershipRole? role = null)
     {
@@ -151,7 +131,8 @@ public class ProjectMembership
 
     public bool CanManageMemberships()
         => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
-
+    public bool CanDeleteProject()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
     public bool CanEditProject()
         => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer;
 

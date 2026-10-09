@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IIdentityRepository, IdentityRepository>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshRepository, RefreshRepository>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
 
         // Authentication and Authorization
 
