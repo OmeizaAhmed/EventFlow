@@ -7,6 +7,10 @@ public class Project
     public string Name { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+    private readonly List<ProjectMembership> _projectMemberships = new();
+    public IReadOnlyCollection<ProjectMembership> ProjectMemberships =>
+        _projectMemberships.AsReadOnly();
 
     private readonly List<ApiKey> _apiKeys = new();
     public IReadOnlyCollection<ApiKey> ApiKeys => _apiKeys.AsReadOnly();
@@ -27,11 +31,11 @@ public class Project
             ProjectId = Guid.NewGuid(),
             Name = name,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
         // create project membership for the creator
         var membership = ProjectMembership.Create(userId: createdByUserId, projectId: newProject.ProjectId);
-        
         return new ProjectCreationResponse(newProject, membership);
     }
 

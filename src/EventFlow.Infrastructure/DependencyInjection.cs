@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 namespace EventFlow.Infrastructure;
 public static class DependencyInjection
 {
@@ -59,10 +60,27 @@ public static class DependencyInjection
 
         };
     });
-        services.AddAuthorizationBuilder().SetDefaultPolicy(new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
-            .RequireAuthenticatedUser()
-            .Build() );
-       
+        services.AddAuthorization(options =>
+        {
+            options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                    JwtBearerDefaults.AuthenticationScheme)
+                .RequireAuthenticatedUser()
+                .Build();
+
+            options.AddPolicy("ValidUserId", policy =>
+            {
+                policy.Combine(options.DefaultPolicy);
+
+                policy.RequireAssertion(context =>
+                {
+                    var userId = context.User
+                        .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                    return Guid.TryParse(userId, out _);
+                });
+            });
+        });
+
 
         return services;
     }

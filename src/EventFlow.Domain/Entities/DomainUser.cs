@@ -8,8 +8,12 @@ public class DomainUser
     public string Email { get; private set; } = string.Empty;
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
+    
     public Guid AuthId { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    private readonly List<ProjectMembership> _projectMemberships = new();
+    public IReadOnlyCollection<ProjectMembership> ProjectMemberships =>
+        _projectMemberships.AsReadOnly();
 
     private DomainUser() { } // EF Core
 

@@ -8,7 +8,9 @@ public class ProjectMembership
 {
     public Guid ProjectMembershipId { get; private set; }
     public Guid UserId { get; private set; }
+    public DomainUser User { get; private set; } = null!;
     public Guid ProjectId { get; private set; }
+    public Project Project { get; private set; } = null!;
     public ProjectMembershipRole Role { get; private set; }
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }

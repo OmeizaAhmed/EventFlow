@@ -9,7 +9,8 @@ namespace EventFlow.Application.Interfaces
     public interface IProjectService
     {
         Task<ProjectResponse> CreateProjectAsync(Guid userId, string name);
-        Task<ProjectResponse?> GetProjectByIdAsync(Guid projectId, Guid userId);
+        Task<ProjectResponse> GetProjectByIdAsync(Guid projectId, Guid userId);
+        Task<IEnumerable<ProjectResponse>> GetProjectsByUserIdAsync(Guid userId);
         Task<ProjectResponse> UpdateProjectAsync(Guid projectId, string name);
         Task<bool> DeleteProjectAsync(Guid projectId, Guid userId);
         Task<InviteMemberResponse> InviteMemberAsync(Guid inviterId, Guid inviteeId, Guid projectId);

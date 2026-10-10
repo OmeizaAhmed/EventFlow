@@ -20,13 +20,17 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
             builder.HasIndex(pm => new { pm.ProjectId, pm.UserId }).IsUnique();
 
             // relationships
-            builder.HasOne<Project>()
-                .WithMany()
-                .HasForeignKey(pm => pm.ProjectId);
+            builder.HasOne(pm => pm.Project)
+            .WithMany(p => p.ProjectMemberships)
+            .HasForeignKey(pm => pm.ProjectId)
+            .IsRequired();
 
-            builder.HasOne<DomainUser>()
-                .WithMany()
-                .HasForeignKey(pm => pm.UserId);
+            builder.HasOne(pm => pm.User)
+                .WithMany(u => u.ProjectMemberships)
+                .HasForeignKey(pm => pm.UserId)
+                .IsRequired();
+
+
         }
     }
 }

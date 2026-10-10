@@ -4,6 +4,8 @@ using EventFlow.Domain.Exceptions;
 using Scalar.AspNetCore;
 using EventFlow.Presentation.Api.Middlewares;
 using Serilog;
+using EventFlow.Application.Interfaces;
+using EventFlow.Presentation.Api.Services;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -22,6 +24,8 @@ try
     builder.Services.AddControllers();
     builder.Services.AddEventFlowInfrastructure(builder.Configuration);
     builder.Services.AddApplicationServices();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
     var app = builder.Build();
     app.UseMiddleware<GlobalErrorHandler>();

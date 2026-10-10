@@ -25,26 +25,32 @@ namespace EventFlow.Application.Services
             var projectCreationResponse = Project.Create(name, userId);
             // Atomically add the project and membership to the repository and return the response
             var project = await _projectRepository.AddAsync(projectCreationResponse);
-            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt);
+            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, projectCreationResponse.Membership.Role.ToString());
         }
 
-        public async Task<ProjectResponse?> GetProjectByIdAsync(Guid projectId, Guid userId)
+        public async Task<ProjectResponse> GetProjectByIdAsync(Guid projectId, Guid userId)
         {
             // Check if the user is a member of the project before returning the project details
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
-                throw new ForbiddenException("User is not a member of the project and cannot view it.");
+                throw new NotFoundException("Project", $"{projectId}");
             }
             // Retrieve the project details
             var project = await _projectRepository.GetByIdAsync(projectId);
             if (project == null)
             {
-                throw new NotFoundException("Project", projectId);
+                throw new NotFoundException("Project", $"{projectId}");
             }
-            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt);
+            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());
         }
 
+        public async Task<IEnumerable<ProjectResponse>> GetProjectsByUserIdAsync(Guid userId)
+        {
+            var userProject = await _projectRepository.GetByUserIdAsync(userId);
+            
+            return userProject.Select(m => new ProjectResponse(m.ProjectId, m.Name, m.CreatedAt, m.Role.ToString()));
+        }
         public async Task<ProjectResponse> UpdateProjectAsync(Guid projectId, string name)
         {
             throw new NotImplementedException();

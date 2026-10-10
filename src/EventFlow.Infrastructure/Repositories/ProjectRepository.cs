@@ -6,6 +6,7 @@ using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using EventFlow.Application.DTOs;
 
 namespace EventFlow.Infrastructure.Repositories
 {
@@ -16,6 +17,22 @@ namespace EventFlow.Infrastructure.Repositories
         public ProjectRepository(EventFlowDbContext context)
         {
             _context = context;
+        }
+
+        public async Task<IEnumerable<ProjectWithUserRole>> GetByUserIdAsync(Guid userId)
+        {
+            var projectWithUserRoles = await _context.ProjectMemberships
+                .Include(m => m.Project)
+                .Where(m => m.UserId == userId)
+                .Select(m => new ProjectWithUserRole(
+                    m.ProjectId,
+                    m.Project.Name,
+                    m.Project.CreatedAt,
+                    m.Role.ToString()
+                ))
+                .ToListAsync();
+
+            return projectWithUserRoles;        
         }
         public async Task<Project?> GetByIdAsync(Guid projectId)
         {
