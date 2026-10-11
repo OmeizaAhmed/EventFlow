@@ -42,5 +42,21 @@ public class ProjectController : ControllerBase
         return Ok(project);
     }
 
+    // Activate a project
+    [HttpPost("{projectId}/activate")]
+    public async Task<IActionResult> ActivateProject(Guid projectId)
+    {
+        await _projectService.ActivateProjectAsync(projectId, _currentUser.UserId);
+        return NoContent();
+    }
+
+    // Deactivate a project
+    [HttpPost("{projectId}/deactivate")]
+    public async Task<IActionResult> DeactivateProject(Guid projectId)
+    {
+        await _projectService.DeactivateProjectAsync(projectId, _currentUser.UserId);
+        return NoContent();
+    }
+
     public record CreateProjectRequest(string Name);
 }

@@ -39,6 +39,14 @@ public class Project
         return new ProjectCreationResponse(newProject, membership);
     }
 
+    public Project UpdateProject(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ValidationException("Project name is required");
+        Name = name;
+        UpdatedAt = DateTime.UtcNow;
+        return this;
+    }
     public ApiKey GenerateApiKey(string hashedKey, string keyPrefix, bool isLive)
     {
         if (!IsActive)
@@ -66,7 +74,11 @@ public class Project
         return endpoint;
     }
 
-    public void Deactivate() => IsActive = false;
+  
+
+    public void Deactivate() => IsActive = IsActive ? false : throw new ValidationException("Project is already inactive");
+
+    public void Activate() => IsActive = IsActive ? throw new ValidationException("Project is already active") : true;
 
 } 
 public record ProjectCreationResponse(Project Project, ProjectMembership Membership);

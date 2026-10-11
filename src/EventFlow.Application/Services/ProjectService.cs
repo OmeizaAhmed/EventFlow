@@ -51,9 +51,21 @@ namespace EventFlow.Application.Services
             
             return userProject.Select(m => new ProjectResponse(m.ProjectId, m.Name, m.CreatedAt, m.Role.ToString()));
         }
-        public async Task<ProjectResponse> UpdateProjectAsync(Guid projectId, string name)
+        public async Task<ProjectResponse> UpdateProjectAsync(Guid projectId,Guid userId, string name)
         {
-            throw new NotImplementedException();
+            var project = await _projectRepository.GetByIdAsync(projectId);
+            if (project == null)
+            {
+                throw new NotFoundException("Project", $"{projectId}");
+            }
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if(membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot update it.");
+            }
+            project.UpdateProject(name);
+            await _projectRepository.UpdateAsync(project);
+            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, project.ProjectMemberships.FirstOrDefault(m => m.UserId == projectId)?.Role.ToString());
         }
 
         public async Task<bool> DeleteProjectAsync(Guid projectId, Guid userId )
@@ -131,5 +143,47 @@ namespace EventFlow.Application.Services
                 membership.UpdatedAt);
         }
        
+        public async Task<bool> DeactivateProjectAsync(Guid projectId, Guid userId)
+        {
+            var project = await _projectRepository.GetByIdAsync(projectId);
+            if (project == null)
+            {
+                throw new NotFoundException("Project", projectId);
+            }
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot deactivate it.");
+            }
+            if (!membership.CanToggleProjectStatus())
+            {
+                throw new ForbiddenException("User does not have permission to deactivate the project.");
+            }
+            project.Deactivate();
+            await _projectRepository.UpdateAsync(project);
+            return true;
+        }
+
+        public async Task<bool> ActivateProjectAsync(Guid projectId, Guid userId)
+        {
+            var project = await _projectRepository.GetByIdAsync(projectId);
+            if (project == null)
+            {
+                throw new NotFoundException("Project", projectId);
+            }
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot activate it.");
+            }
+            if (!membership.CanToggleProjectStatus())
+            {
+                throw new ForbiddenException("User does not have permission to activate the project.");
+            }
+            project.Activate();
+            await _projectRepository.UpdateAsync(project);
+            return true;
+        }
+
     }
 }

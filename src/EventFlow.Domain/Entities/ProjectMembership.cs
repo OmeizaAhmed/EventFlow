@@ -104,6 +104,8 @@ public class ProjectMembership
     {
         if (!IsActive)
             throw new ValidationException("Membership is already inactive");
+        if (!Modifier.CanManageMemberships())
+            throw new ValidationException("Modifier does not have permission to deactivate the membership");
 
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
@@ -114,6 +116,8 @@ public class ProjectMembership
     {
         if (IsActive)
             throw new ValidationException("Membership is already active");
+        if (!Modifier.CanManageMemberships())
+            throw new ValidationException("Modifier does not have permission to reactivate the membership");
 
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
@@ -140,7 +144,8 @@ public class ProjectMembership
 
     public bool CanReadProject()
         => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer || Role == ProjectMembershipRole.ReadOnly;
-
+    public bool CanToggleProjectStatus()
+        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
     private static void ValidateRole(ProjectMembershipRole role)
     {
         if (!Enum.IsDefined(typeof(ProjectMembershipRole), role))
