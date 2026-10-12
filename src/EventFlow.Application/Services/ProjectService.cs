@@ -63,6 +63,10 @@ namespace EventFlow.Application.Services
             {
                 throw new ForbiddenException("User is not a member of the project and cannot update it.");
             }
+            if (!membership.CanEditProject())
+            {
+                throw new ForbiddenException("User does not have permission to update the project.");
+            }
             project.UpdateProject(name);
             await _projectRepository.UpdateAsync(project);
             return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());

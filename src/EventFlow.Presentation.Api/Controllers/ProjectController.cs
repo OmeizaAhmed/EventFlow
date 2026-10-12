@@ -42,6 +42,13 @@ public class ProjectController : ControllerBase
         return Ok(project);
     }
 
+    [HttpPut("{projectId}")]
+    public async Task<IActionResult> UpdateProject(Guid projectId, [FromBody] ProjectRequest request)
+    {
+        var project = await _projectService.UpdateProjectAsync(projectId, _currentUser.UserId, request.Name);
+        return Ok(project);
+    }
+
     // Activate a project
     [HttpPost("{projectId}/activate")]
     public async Task<IActionResult> ActivateProject(Guid projectId)
