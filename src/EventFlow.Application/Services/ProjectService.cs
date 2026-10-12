@@ -65,7 +65,7 @@ namespace EventFlow.Application.Services
             }
             project.UpdateProject(name);
             await _projectRepository.UpdateAsync(project);
-            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, project.ProjectMemberships.FirstOrDefault(m => m.UserId == projectId)?.Role.ToString());
+            return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());
         }
 
         public async Task<bool> DeleteProjectAsync(Guid projectId, Guid userId )
