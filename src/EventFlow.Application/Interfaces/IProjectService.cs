@@ -18,5 +18,13 @@ namespace EventFlow.Application.Interfaces
         Task<InviteMemberResponse> InviteMemberAsync(Guid inviterId, Guid inviteeId, Guid projectId);
         Task<ProjectMembersResponse> GetProjectMembersAsync(Guid projectId, Guid userId);
         Task<UpdateMemberRoleResponse> UpdateMemberRoleAsync(Guid modifierId, Guid membershipId, Guid projectId, ProjectMembershipRole newRole);
+
+        // Additional methods for API key management
+        Task<IEnumerable<ApiKeyResponse>> ListApiKeysAsync(Guid projectId, Guid userId);
+        Task<ApiKeyResponse> GetApiKeyByIdAsync(Guid projectId, Guid userId, Guid apiKeyId);
+        Task<CreatedApiKeyResponse> GenerateApiKeyAsync(Guid projectId, Guid userId, bool isLive);
+        Task<CreatedApiKeyResponse> RotateApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, bool isLive);
+        Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId);
+
     }
 }

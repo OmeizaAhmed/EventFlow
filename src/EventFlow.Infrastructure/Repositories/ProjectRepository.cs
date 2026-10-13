@@ -94,5 +94,41 @@ namespace EventFlow.Infrastructure.Repositories
         {
             await _context.SaveChangesAsync();
         }
+        // Additional methods for API key management
+        public async Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId)
+        {
+            return await _context.ApiKeys.FindAsync(apiKeyId);
+        }
+        public async Task<ApiKey> AddApiKeyAsync(ApiKey apiKey)
+        {
+            _context.ApiKeys.Add(apiKey);
+            await _context.SaveChangesAsync();
+            return apiKey;
+        }
+        public async Task<ApiKey> UpdateApiKeyAsync(ApiKey apiKey)
+        {
+            _context.ApiKeys.Update(apiKey);
+            await _context.SaveChangesAsync();
+            return apiKey;
+        }
+        public async Task<bool> DeleteApiKeyAsync(Guid apiKeyId)
+        {
+            var apiKey = await _context.ApiKeys.FindAsync(apiKeyId);
+            if (apiKey == null)
+            {
+                return false;
+            }
+            _context.ApiKeys.Remove(apiKey);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<IEnumerable<ApiKey>> GetApiKeysByProjectIdAsync(Guid projectId)
+        {
+            return await _context.ApiKeys.Where(k => k.ProjectId == projectId).ToListAsync();
+        }
+        public async Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix)
+        {
+            return await _context.ApiKeys.FirstOrDefaultAsync(k => k.ProjectId == projectId && k.KeyPrefix == keyPrefix);
+        }
     }
 }

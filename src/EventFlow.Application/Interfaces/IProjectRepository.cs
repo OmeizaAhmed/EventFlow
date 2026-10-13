@@ -19,5 +19,13 @@ namespace EventFlow.Application.Interfaces
         Task<ProjectMembership> UpdateMembershipAsync(ProjectMembership membership);
         Task<bool> DeleteMembershipAsync(Guid membershipId);
         Task SaveChangesAsync();
+
+        // Additional methods for API key management
+        Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId);
+        Task<ApiKey> AddApiKeyAsync(ApiKey apiKey);
+        Task<ApiKey> UpdateApiKeyAsync(ApiKey apiKey);
+        Task<bool> DeleteApiKeyAsync(Guid apiKeyId);
+        Task<IEnumerable<ApiKey>> GetApiKeysByProjectIdAsync(Guid projectId);
+        Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix);
     }
 }

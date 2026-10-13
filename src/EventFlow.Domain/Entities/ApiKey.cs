@@ -21,6 +21,7 @@ public class ApiKey
         KeyPrefix = keyPrefix;
         IsLive = isLive;
         CreatedAt = DateTime.UtcNow;
+       
     }
 
     internal void Revoke()

@@ -7,15 +7,17 @@ using EventFlow.Domain.Exceptions;
 
 namespace EventFlow.Tests;
 
+
 public class ProjectServiceTests
 {
     private readonly ProjectRepositoryStub _repository = new();
     private readonly ProjectService _service;
+    
     private readonly ProjectCreationResponse _creation = Project.Create("Original project", Guid.NewGuid());
 
     public ProjectServiceTests()
     {
-        _service = new ProjectService(_repository);
+        _service = new ProjectService(_repository, new ApiKeyService());
         _repository.Projects.Add(_creation.Project);
         _repository.Memberships.Add(_creation.Membership);
     }
@@ -439,5 +441,13 @@ public class ProjectServiceTests
 
         public Task<bool> DeleteMembershipAsync(Guid membershipId) => throw new NotSupportedException();
         public Task SaveChangesAsync() => throw new NotSupportedException();
+
+        // Not supported in this stub, but required by the interface. The ProjectService does not use these methods, so they are not tested.
+        public Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId) => throw new NotSupportedException();
+        public Task<ApiKey> AddApiKeyAsync(ApiKey apiKey) => throw new NotSupportedException();
+        public Task<ApiKey> UpdateApiKeyAsync(ApiKey apiKey) => throw new NotSupportedException();
+        public Task<bool> DeleteApiKeyAsync(Guid apiKeyId) =>  throw new NotSupportedException();
+        public Task<IEnumerable<ApiKey>> GetApiKeysByProjectIdAsync(Guid projectId) => throw new NotSupportedException();
+        public Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix) => throw new NotSupportedException();
     }
 }

@@ -57,11 +57,12 @@ public class Project
         return key;
     }
 
-    public void RevokeApiKey(Guid apiKeyId)
+    public ApiKey RevokeApiKey(Guid apiKeyId)
     {
         var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId && k.ProjectId == ProjectId)
                    ?? throw new NotFoundException("Api-key", apiKeyId);
         key.Revoke();
+        return key;
     }
 
     public WebhookEndpoint RegisterEndpoint(string url, string signingSecretValue)

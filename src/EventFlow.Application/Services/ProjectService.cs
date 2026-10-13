@@ -14,10 +14,12 @@ namespace EventFlow.Application.Services
     public class ProjectService : IProjectService
     {
         private readonly IProjectRepository _projectRepository;
+        private readonly IApiKeyService _apiKeyService;
 
-        public ProjectService(IProjectRepository projectRepository)
+        public ProjectService(IProjectRepository projectRepository, IApiKeyService apiKeyService)
         {
             _projectRepository = projectRepository;
+            _apiKeyService = apiKeyService;
         }
 
         public async Task<ProjectResponse> CreateProjectAsync(Guid userId, string name)
@@ -186,6 +188,125 @@ namespace EventFlow.Application.Services
             }
             project.Activate();
             await _projectRepository.UpdateAsync(project);
+            return true;
+        }
+
+        // Additional methods for API key management would go here, following similar patterns of validation and repository interaction.
+        public async Task<IEnumerable<ApiKeyResponse>> ListApiKeysAsync(Guid projectId, Guid userId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot list API keys.");
+            }
+            if (!membership.CanManageApiKeys())
+            {
+                throw new ForbiddenException("User does not have permission to manage API keys.");
+            }
+            var keys = await _projectRepository.GetApiKeysByProjectIdAsync(projectId);
+            return keys.Select(k => new ApiKeyResponse(
+                k.ApiKeyId,
+                k.ProjectId,
+                k.KeyPrefix,
+                k.IsLive,
+                k.CreatedAt,
+                k.RevokedAt,
+                k.IsRevoked
+            ));
+        }
+
+        public async Task<ApiKeyResponse> GetApiKeyByIdAsync(Guid projectId, Guid userId, Guid apiKeyId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot list API keys.");
+            }
+            if (!membership.CanManageApiKeys())
+            {
+                throw new ForbiddenException("User does not have permission to manage API keys.");
+            }
+            var key = await _projectRepository.GetApiKeyAsync(apiKeyId);
+            if (key == null)
+            {
+                throw new NotFoundException("API Key", apiKeyId);
+            }
+            return new ApiKeyResponse(
+                key.ApiKeyId,
+                key.ProjectId,
+                key.KeyPrefix,
+                key.IsLive,
+                key.CreatedAt,
+                key.RevokedAt,
+                key.IsRevoked
+            );
+        }
+
+        public async Task<CreatedApiKeyResponse> GenerateApiKeyAsync(Guid projectId, Guid userId, bool isLive)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot generate API keys.");
+            }
+            if (!membership.CanManageApiKeys())
+            {
+                throw new ForbiddenException("User does not have permission to manage API keys.");
+            }
+            var key = _apiKeyService.Generate(isLive);
+
+            // Save the generated key to the repository
+            // get the project to ensure it exists
+            var project = await _projectRepository.GetByIdAsync(projectId);
+            if (project == null)
+            {
+                throw new NotFoundException("Project", projectId);
+            }
+            
+            var apiKey = project.GenerateApiKey(key.HashedKey, key.KeyPrefix, isLive);
+            await _projectRepository.UpdateAsync(project);
+            await _projectRepository.AddApiKeyAsync(apiKey);
+            return new CreatedApiKeyResponse(
+                apiKey.ApiKeyId,
+                apiKey.ProjectId,
+                key.PlainTextKey,
+                apiKey.KeyPrefix,
+                apiKey.IsLive,
+                apiKey.CreatedAt
+            );
+        }
+
+        public async Task<CreatedApiKeyResponse> RotateApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, bool isLive)
+        {
+            throw new NotImplementedException("RotateApiKeyAsync is not implemented yet.");
+
+        }
+
+        public async Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null)
+            {
+                throw new ForbiddenException("User is not a member of the project and cannot revoke API keys.");
+            }
+            if (!membership.CanManageApiKeys())
+            {
+                throw new ForbiddenException("User does not have permission to manage API keys.");
+            }
+            var apiKey = await _projectRepository.GetApiKeyAsync(apiKeyId);
+            if (apiKey == null)
+            {
+                throw new NotFoundException("API Key", apiKeyId);
+            }
+
+            var project = await _projectRepository.GetByIdAsync(projectId);
+            if(project == null)
+            {
+                throw new NotFoundException("Project", projectId);
+            }
+            var revokedApiKey = project.RevokeApiKey(apiKeyId);
+            await _projectRepository.UpdateAsync(project);
+            await _projectRepository.UpdateApiKeyAsync(revokedApiKey);
             return true;
         }
 
