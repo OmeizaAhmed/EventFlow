@@ -24,7 +24,7 @@ namespace EventFlow.Application.Interfaces
         Task<ApiKeyResponse> GetApiKeyByIdAsync(Guid projectId, Guid userId, Guid apiKeyId);
         Task<CreatedApiKeyResponse> GenerateApiKeyAsync(Guid projectId, Guid userId, bool isLive);
         Task<CreatedApiKeyResponse> RotateApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, bool isLive);
-        Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId);
+        Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, DateTime? revokedAt = null);
 
     }
 }

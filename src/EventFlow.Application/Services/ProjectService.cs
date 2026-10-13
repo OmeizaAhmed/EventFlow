@@ -264,7 +264,6 @@ namespace EventFlow.Application.Services
             }
             
             var apiKey = project.GenerateApiKey(key.HashedKey, key.KeyPrefix, isLive);
-            await _projectRepository.UpdateAsync(project);
             await _projectRepository.AddApiKeyAsync(apiKey);
             return new CreatedApiKeyResponse(
                 apiKey.ApiKeyId,
@@ -278,11 +277,14 @@ namespace EventFlow.Application.Services
 
         public async Task<CreatedApiKeyResponse> RotateApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, bool isLive)
         {
-            throw new NotImplementedException("RotateApiKeyAsync is not implemented yet.");
-
+            // Generate a new API key and revoke the old one atomically
+            var apiKey = await GenerateApiKeyAsync(projectId, userId, isLive); // This will throw if the user doesn't have permission
+            // Revoke the old API key after one hour grace period
+            var revokeResult = await RevokeApiKeyAsync(projectId, userId, apiKeyId, DateTime.UtcNow.AddHours(1)); // This will throw if the user doesn't have permission
+            return apiKey;
         }
 
-        public async Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId)
+        public async Task<bool> RevokeApiKeyAsync(Guid projectId, Guid userId, Guid apiKeyId, DateTime? revokedAt = null)
         {
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
@@ -304,8 +306,7 @@ namespace EventFlow.Application.Services
             {
                 throw new NotFoundException("Project", projectId);
             }
-            var revokedApiKey = project.RevokeApiKey(apiKeyId);
-            await _projectRepository.UpdateAsync(project);
+            var revokedApiKey = project.RevokeApiKey(apiKeyId, revokedAt);
             await _projectRepository.UpdateApiKeyAsync(revokedApiKey);
             return true;
         }

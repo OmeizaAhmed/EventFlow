@@ -96,6 +96,13 @@ public class ProjectController : ControllerBase
         await _projectService.RevokeApiKeyAsync(projectId, _currentUser.UserId, apiKeyId);
         return NoContent();
     }
+    // rotate api key
+    [HttpPost("{projectId}/apikeys/{apiKeyId}/rotate")]
+    public async Task<IActionResult> RotateApiKey(Guid projectId, Guid apiKeyId, [FromBody] CreateApiKeyRequest request)
+    {
+        var response = await _projectService.RotateApiKeyAsync(projectId, _currentUser.UserId, apiKeyId, request.IsLive);
+        return Ok(response);
+    }
 
     public record CreateProjectRequest(string Name);
     public record CreateApiKeyRequest(bool IsLive);

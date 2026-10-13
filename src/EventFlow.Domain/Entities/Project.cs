@@ -57,11 +57,11 @@ public class Project
         return key;
     }
 
-    public ApiKey RevokeApiKey(Guid apiKeyId)
+    public ApiKey RevokeApiKey(Guid apiKeyId, DateTime? revokedAt = null)
     {
         var key = _apiKeys.FirstOrDefault(k => k.ApiKeyId == apiKeyId && k.ProjectId == ProjectId)
                    ?? throw new NotFoundException("Api-key", apiKeyId);
-        key.Revoke();
+        key.Revoke(revokedAt);
         return key;
     }
 
