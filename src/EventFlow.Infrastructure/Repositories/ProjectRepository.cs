@@ -126,9 +126,11 @@ namespace EventFlow.Infrastructure.Repositories
         {
             return await _context.ApiKeys.Where(k => k.ProjectId == projectId).ToListAsync();
         }
-        public async Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix)
+        public async Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId,string keyPrefix)
         {
             return await _context.ApiKeys.FirstOrDefaultAsync(k => k.ProjectId == projectId && k.KeyPrefix == keyPrefix);
         }
+
+       
     }
 }

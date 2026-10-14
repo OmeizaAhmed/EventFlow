@@ -3,7 +3,7 @@ using System.Text;
 using EventFlow.Application.DTOs;
 using EventFlow.Application.Interfaces;
 
-namespace EventFlow.Application.Services;
+namespace EventFlow.Infrastructure.Services;
 
 public sealed class ApiKeyService : IApiKeyService
 {

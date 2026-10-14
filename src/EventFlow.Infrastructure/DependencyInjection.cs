@@ -1,16 +1,18 @@
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Interfaces;
+using EventFlow.Infrastructure.Authentication;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Repositories;
 using EventFlow.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 namespace EventFlow.Infrastructure;
 public static class DependencyInjection
@@ -42,6 +44,10 @@ public static class DependencyInjection
         services.AddScoped<IRefreshRepository, RefreshRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
 
+        // Services
+        services.AddSingleton<IApiKeyService, ApiKeyService>();
+
+
         // Authentication and Authorization
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -59,7 +65,9 @@ public static class DependencyInjection
             ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero to prevent token expiration issues
 
         };
-    });
+    }).AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyDefaults.Scheme, _ => { });
+
         services.AddAuthorization(options =>
         {
             options.DefaultPolicy = new AuthorizationPolicyBuilder(
@@ -79,6 +87,15 @@ public static class DependencyInjection
                     return Guid.TryParse(userId, out _);
                 });
             });
+
+            options.AddPolicy(ApiKeyDefaults.AnyKeyPolicy, policy => policy
+                .AddAuthenticationSchemes(ApiKeyDefaults.Scheme)
+                .RequireAuthenticatedUser());
+            // Live keys only
+            options.AddPolicy(ApiKeyDefaults.LiveKeyPolicy, policy => policy
+                .AddAuthenticationSchemes(ApiKeyDefaults.Scheme)
+                .RequireAuthenticatedUser()
+                .RequireClaim(ApiKeyDefaults.EnvironmentClaim, "live"));
         });
 
 

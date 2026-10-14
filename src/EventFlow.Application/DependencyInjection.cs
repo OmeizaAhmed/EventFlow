@@ -9,7 +9,6 @@ public static class DependencyInjection
     {
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProjectService, ProjectService>();
-        services.AddSingleton<IApiKeyService, ApiKeyService>();
         return services;
     }
 }

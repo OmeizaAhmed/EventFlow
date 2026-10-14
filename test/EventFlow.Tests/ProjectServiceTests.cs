@@ -4,6 +4,7 @@ using EventFlow.Application.Services;
 using EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
 using EventFlow.Domain.Exceptions;
+using EventFlow.Infrastructure.Services;
 
 namespace EventFlow.Tests;
 

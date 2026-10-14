@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using EventFlow.Application.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using EventFlow.Infrastructure.Authentication;
 [ApiController]
 [Route("api/[controller]s")]
 [Authorize(Policy = "ValidUserId")]
@@ -74,6 +75,7 @@ public class ProjectController : ControllerBase
     }
 
     // get api key by id
+    
     [HttpGet("{projectId}/apikeys/{apiKeyId}")]
     public async Task<IActionResult> GetApiKeyById(Guid projectId, Guid apiKeyId)
     {
@@ -103,6 +105,8 @@ public class ProjectController : ControllerBase
         var response = await _projectService.RotateApiKeyAsync(projectId, _currentUser.UserId, apiKeyId, request.IsLive);
         return Ok(response);
     }
+
+    
 
     public record CreateProjectRequest(string Name);
     public record CreateApiKeyRequest(bool IsLive);
