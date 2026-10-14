@@ -67,9 +67,11 @@ public sealed class ApiKeyService : IApiKeyService
     {
         if (string.IsNullOrWhiteSpace(presentedKey)) return null;
 
-        var parts = presentedKey.Split('_');
+        // Base64Url secrets may contain underscores, so only split the prefix fields.
+        var parts = presentedKey.Split('_', 4);
         // ["ef", "live", "8a2f1c3d", "<secret>"]
-        if (parts.Length != 4 || parts[0] != "ef" || (parts[1] != "live" && parts[1] != "test"))
+        if (parts.Length != 4 || parts[0] != "ef" || (parts[1] != "live" && parts[1] != "test")
+            || parts[2].Length != 8 || !parts[2].All(Uri.IsHexDigit) || parts[3].Length == 0)
             return null;
 
         return $"{parts[0]}_{parts[1]}_{parts[2]}";

@@ -9,7 +9,7 @@ using EventFlow.Infrastructure.Services;
 namespace EventFlow.Tests;
 
 
-public class ProjectServiceTests
+public partial class ProjectServiceTests
 {
     private readonly ProjectRepositoryStub _repository = new();
     private readonly ProjectService _service;
@@ -443,12 +443,27 @@ public class ProjectServiceTests
         public Task<bool> DeleteMembershipAsync(Guid membershipId) => throw new NotSupportedException();
         public Task SaveChangesAsync() => throw new NotSupportedException();
 
-        // Not supported in this stub, but required by the interface. The ProjectService does not use these methods, so they are not tested.
-        public Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId) => throw new NotSupportedException();
-        public Task<ApiKey> AddApiKeyAsync(ApiKey apiKey) => throw new NotSupportedException();
-        public Task<ApiKey> UpdateApiKeyAsync(ApiKey apiKey) => throw new NotSupportedException();
-        public Task<bool> DeleteApiKeyAsync(Guid apiKeyId) =>  throw new NotSupportedException();
-        public Task<IEnumerable<ApiKey>> GetApiKeysByProjectIdAsync(Guid projectId) => throw new NotSupportedException();
-        public Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix) => throw new NotSupportedException();
+        public List<ApiKey> ApiKeys { get; } = [];
+        public List<ApiKey> AddedApiKeys { get; } = [];
+        public Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId) =>
+            Task.FromResult(ApiKeys.SingleOrDefault(k => k.ApiKeyId == apiKeyId));
+        public Task<ApiKey> AddApiKeyAsync(ApiKey apiKey)
+        {
+            ApiKeys.Add(apiKey);
+            AddedApiKeys.Add(apiKey);
+            return Task.FromResult(apiKey);
+        }
+        public Task<ApiKey> UpdateApiKeyAsync(ApiKey apiKey)
+        {
+            ApiKeys.RemoveAll(k => k.ApiKeyId == apiKey.ApiKeyId);
+            ApiKeys.Add(apiKey);
+            return Task.FromResult(apiKey);
+        }
+        public Task<bool> DeleteApiKeyAsync(Guid apiKeyId) =>
+            Task.FromResult(ApiKeys.RemoveAll(k => k.ApiKeyId == apiKeyId) > 0);
+        public Task<IEnumerable<ApiKey>> GetApiKeysByProjectIdAsync(Guid projectId) =>
+            Task.FromResult<IEnumerable<ApiKey>>(ApiKeys.Where(k => k.ProjectId == projectId).ToArray());
+        public Task<ApiKey?> GetApiKeyByPrefixAsync(Guid projectId, string keyPrefix) =>
+            Task.FromResult(ApiKeys.SingleOrDefault(k => k.ProjectId == projectId && k.KeyPrefix == keyPrefix));
     }
 }

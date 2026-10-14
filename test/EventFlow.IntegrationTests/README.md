@@ -18,7 +18,7 @@ reload records in fresh scopes. The database is discarded when the test ends.
 No Docker, PostgreSQL instance, development database, or local secrets are needed.
 Test JWT settings override application configuration.
 
-The 57 cases cover:
+The 77 cases cover:
 
 - Authenticated creation, persisted owner membership, and the Location header.
 - Owner/member retrieval, hidden projects for non-members, and list isolation.
@@ -29,6 +29,9 @@ The 57 cases cover:
   plus signed tokens with missing or invalid user IDs.
 - Missing projects, malformed IDs/bodies, blank names, and spoofed ownership.
 - Persisted results and unchanged data after rejected writes.
+- API key creation permissions, hash-only persistence, one-time secret display,
+  Bearer and X-API-Key authentication, project isolation, invalid credentials,
+  revoked keys, and scheduled revocation grace periods.
 
 Memberships for shared-project scenarios are seeded with the domain invitation
 method because invitations do not yet have an HTTP endpoint. All users are

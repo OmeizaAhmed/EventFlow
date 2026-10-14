@@ -14,7 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace EventFlow.IntegrationTests;
 
-public sealed class ProjectApiTests : IAsyncLifetime
+public sealed partial class ProjectApiTests : IAsyncLifetime
 {
     private readonly EventFlowApiFactory _factory = new();
 
