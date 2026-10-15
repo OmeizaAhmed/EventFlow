@@ -1,0 +1,57 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using EventFlow.Application.Interfaces;
+using EventFlow.Domain.Entities;
+using EventFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace EventFlow.Infrastructure.Repositories
+{
+    public class EndpointRepository : IEndpointRepository
+    {
+        private readonly EventFlowDbContext _dbContext;
+
+        public EndpointRepository(EventFlowDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+        public async Task<WebhookEndpoint> CreateEndpointAsync(WebhookEndpoint endpoint)
+        {
+            _dbContext.WebhookEndpoints.Add(endpoint);
+            await _dbContext.SaveChangesAsync();
+            return endpoint;
+        }
+        public async Task<WebhookEndpoint?> GetEndpointByIdAsync(Guid endpointId)
+        {
+            return await _dbContext.WebhookEndpoints.FindAsync(endpointId);
+        }
+        public async Task<IEnumerable<WebhookEndpoint>> GetAllEndpointsAsync(Guid projectId)
+        {
+            return await _dbContext.WebhookEndpoints
+                .Where(e => e.ProjectId == projectId)
+                .ToListAsync();
+        }
+        public async Task<WebhookEndpoint> UpdateEndpointAsync(WebhookEndpoint endpoint)
+        {
+            _dbContext.WebhookEndpoints.Update(endpoint);
+            await _dbContext.SaveChangesAsync();
+            return endpoint;
+        }
+        public async Task DeleteEndpointAsync(Guid endpointId)
+        {
+            var endpoint = await _dbContext.WebhookEndpoints.FindAsync(endpointId);
+            if (endpoint != null)
+            {
+                _dbContext.WebhookEndpoints.Remove(endpoint);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+        public async Task SaveChangesAsync()
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+}

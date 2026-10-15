@@ -107,6 +107,6 @@ public class IdentityRepository : IIdentityRepository
         {
             return null;
         }
-        return new IdentityInfo { Id = user.Id, Email = user.Email };
+        return new IdentityInfo { Id = user.Id, Email = user.UserName! };
     }
 }

@@ -65,12 +65,12 @@ public class Project
         return key;
     }
 
-    public WebhookEndpoint RegisterEndpoint(string url, string signingSecretValue)
+    public WebhookEndpoint RegisterEndpoint(string url, string signingSecretValue, string description)
     {
         if (!IsActive)
             throw new ValidationException("Cannot register an endpoint on an inactive project");
 
-        var endpoint = WebhookEndpoint.Create(ProjectId, url, new ValueObject.SigningSecret(signingSecretValue));
+        var endpoint = WebhookEndpoint.Create(ProjectId, url, new ValueObject.SigningSecret(signingSecretValue), description);
         _endpoints.Add(endpoint);
         return endpoint;
     }

@@ -65,8 +65,10 @@ namespace EventFlow.Infrastructure.Repositories
         }
         public async Task<ProjectMembership?> GetMembershipAsync(Guid userId, Guid projectId)
         {
-            return await _context.ProjectMemberships.FirstOrDefaultAsync(m => m.UserId == userId && m.ProjectId == projectId);
+            return await _context.ProjectMemberships.Include(m => m.Project)
+                .FirstOrDefaultAsync(m => m.UserId == userId && m.ProjectId == projectId);
         }
+
         public async Task<ProjectMembership> AddMembershipAsync(ProjectMembership membership)
         {
             _context.ProjectMemberships.Add(membership);

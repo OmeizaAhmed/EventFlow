@@ -46,7 +46,7 @@ public partial class ProjectServiceTests
     {
         await Assert.ThrowsAsync<ForbiddenException>(() => _service.GenerateApiKeyAsync(ProjectId, Guid.NewGuid(), false));
         Assert.Empty(_repository.AddedApiKeys);
-        Assert.Empty(_repository.ProjectLookups);
+        Assert.Empty(_creation.Project.ApiKeys);
     }
 
     [Fact]

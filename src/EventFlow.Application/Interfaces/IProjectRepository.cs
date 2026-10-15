@@ -14,6 +14,7 @@ namespace EventFlow.Application.Interfaces
         Task<Project> AddAsync(ProjectCreationResponse projectCreationResponse );
         Task<Project> UpdateAsync(Project project);
         Task<bool> DeleteAsync(Guid projectId);
+        // Returns the membership with its Project loaded, or null if either is missing.
         Task<ProjectMembership?> GetMembershipAsync(Guid userId, Guid projectId);
         Task<ProjectMembership> AddMembershipAsync(ProjectMembership membership);
         Task<ProjectMembership> UpdateMembershipAsync(ProjectMembership membership);

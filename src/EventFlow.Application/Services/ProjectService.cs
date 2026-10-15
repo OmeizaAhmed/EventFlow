@@ -38,12 +38,8 @@ namespace EventFlow.Application.Services
             {
                 throw new NotFoundException("Project", $"{projectId}");
             }
-            // Retrieve the project details
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", $"{projectId}");
-            }
+            var project = membership.Project;
+
             return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());
         }
 
@@ -55,20 +51,17 @@ namespace EventFlow.Application.Services
         }
         public async Task<ProjectResponse> UpdateProjectAsync(Guid projectId,Guid userId, string name)
         {
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", $"{projectId}");
-            }
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if(membership == null)
             {
+                await EnsureProjectExistsAsync(projectId);
                 throw new ForbiddenException("User is not a member of the project and cannot update it.");
             }
             if (!membership.CanEditProject())
             {
                 throw new ForbiddenException("User does not have permission to update the project.");
             }
+            var project = membership.Project;
             project.UpdateProject(name);
             await _projectRepository.UpdateAsync(project);
             return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());
@@ -76,16 +69,11 @@ namespace EventFlow.Application.Services
 
         public async Task<bool> DeleteProjectAsync(Guid projectId, Guid userId )
         {
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", projectId);
-            }
-            // Check if the user is a member of the project before allowing deletion
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
-               throw new ForbiddenException("User is not a member of the project and cannot delete it.");
+                await EnsureProjectExistsAsync(projectId);
+                throw new ForbiddenException("User is not a member of the project and cannot delete it.");
             }
 
             // check if the user has the necessary role to delete the project
@@ -94,7 +82,7 @@ namespace EventFlow.Application.Services
                 throw new ForbiddenException("User does not have permission to delete the project.");
             }
 
-            await _projectRepository.DeleteAsync(project.ProjectId);
+            await _projectRepository.DeleteAsync(membership.Project.ProjectId);
             return true;
         }
 
@@ -151,20 +139,17 @@ namespace EventFlow.Application.Services
        
         public async Task<bool> DeactivateProjectAsync(Guid projectId, Guid userId)
         {
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", projectId);
-            }
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
+                await EnsureProjectExistsAsync(projectId);
                 throw new ForbiddenException("User is not a member of the project and cannot deactivate it.");
             }
             if (!membership.CanToggleProjectStatus())
             {
                 throw new ForbiddenException("User does not have permission to deactivate the project.");
             }
+            var project = membership.Project;
             project.Deactivate();
             await _projectRepository.UpdateAsync(project);
             return true;
@@ -172,20 +157,17 @@ namespace EventFlow.Application.Services
 
         public async Task<bool> ActivateProjectAsync(Guid projectId, Guid userId)
         {
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", projectId);
-            }
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
+                await EnsureProjectExistsAsync(projectId);
                 throw new ForbiddenException("User is not a member of the project and cannot activate it.");
             }
             if (!membership.CanToggleProjectStatus())
             {
                 throw new ForbiddenException("User does not have permission to activate the project.");
             }
+            var project = membership.Project;
             project.Activate();
             await _projectRepository.UpdateAsync(project);
             return true;
@@ -247,6 +229,7 @@ namespace EventFlow.Application.Services
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
+                await EnsureProjectExistsAsync(projectId);
                 throw new ForbiddenException("User is not a member of the project and cannot generate API keys.");
             }
             if (!membership.CanManageApiKeys())
@@ -255,13 +238,7 @@ namespace EventFlow.Application.Services
             }
             var key = _apiKeyService.Generate(isLive);
 
-            // Save the generated key to the repository
-            // get the project to ensure it exists
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if (project == null)
-            {
-                throw new NotFoundException("Project", projectId);
-            }
+            var project = membership.Project;
             
             var apiKey = project.GenerateApiKey(key.HashedKey, key.KeyPrefix, isLive);
             await _projectRepository.AddApiKeyAsync(apiKey);
@@ -289,6 +266,7 @@ namespace EventFlow.Application.Services
             var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
             if (membership == null)
             {
+                await EnsureProjectExistsAsync(projectId);
                 throw new ForbiddenException("User is not a member of the project and cannot revoke API keys.");
             }
             if (!membership.CanManageApiKeys())
@@ -301,14 +279,18 @@ namespace EventFlow.Application.Services
                 throw new NotFoundException("API Key", apiKeyId);
             }
 
-            var project = await _projectRepository.GetByIdAsync(projectId);
-            if(project == null)
-            {
-                throw new NotFoundException("Project", projectId);
-            }
+            var project = membership.Project;
             var revokedApiKey = project.RevokeApiKey(apiKeyId, revokedAt);
             await _projectRepository.UpdateApiKeyAsync(revokedApiKey);
             return true;
+        }
+
+        private async Task EnsureProjectExistsAsync(Guid projectId)
+        {
+            if (await _projectRepository.GetByIdAsync(projectId) == null)
+            {
+                throw new NotFoundException("Project", projectId);
+            }
         }
 
     }

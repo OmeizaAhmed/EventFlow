@@ -140,13 +140,12 @@ public partial class ProjectServiceTests
     [InlineData("Delete")]
     [InlineData("Activate")]
     [InlineData("Deactivate")]
-    public async Task ProjectMutation_MissingProject_ThrowsBeforeCheckingMembership(string operation)
+    public async Task ProjectMutation_MissingProject_ThrowsWithoutPersisting(string operation)
     {
         _repository.Projects.Clear();
 
         await Assert.ThrowsAsync<NotFoundException>(() => MutateProject(operation, OwnerId));
 
-        Assert.Empty(_repository.MembershipLookups);
         AssertNoProjectWrites();
     }
 
@@ -407,7 +406,16 @@ public partial class ProjectServiceTests
         public Task<ProjectMembership?> GetMembershipAsync(Guid userId, Guid projectId)
         {
             MembershipLookups.Add((userId, projectId));
-            return Task.FromResult(Memberships.SingleOrDefault(m => m.UserId == userId && m.ProjectId == projectId));
+            var project = Projects.SingleOrDefault(p => p.ProjectId == projectId);
+            var membership = Memberships.SingleOrDefault(m => m.UserId == userId && m.ProjectId == projectId);
+            if (project == null || membership == null)
+                return Task.FromResult<ProjectMembership?>(null);
+
+            // Match the real repository's Include(m => m.Project), including its
+            // required relationship: a missing project cannot yield a membership.
+            typeof(ProjectMembership).GetProperty(nameof(ProjectMembership.Project))!
+                .SetValue(membership, project);
+            return Task.FromResult<ProjectMembership?>(membership);
         }
 
         public Task<Project> AddAsync(ProjectCreationResponse creation)

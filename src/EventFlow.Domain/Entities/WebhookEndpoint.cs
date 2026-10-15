@@ -7,6 +7,7 @@ public class WebhookEndpoint
     public Guid ProjectId { get; private set; }
     public string Url { get; private set; } = string.Empty;
     public SigningSecret SigningSecret { get; private set; } = null!;
+    public string Description { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
@@ -15,7 +16,7 @@ public class WebhookEndpoint
 
     private WebhookEndpoint() { } // EF Core
 
-    internal static WebhookEndpoint Create(Guid projectId, string url, SigningSecret signingSecret)
+    internal static WebhookEndpoint Create(Guid projectId, string url, SigningSecret signingSecret, string description)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != "https")
             throw new ValidationException("Webhook endpoint URL must be a valid HTTPS URL");
@@ -26,6 +27,7 @@ public class WebhookEndpoint
             ProjectId = projectId,
             Url = url,
             SigningSecret = signingSecret,
+            Description = description,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -57,5 +59,20 @@ public class WebhookEndpoint
             throw new ValidationException("Endpoint is already inactive");
 
         IsActive = false;
+    }
+
+    public void Activate()
+    {
+        if (IsActive)
+            throw new ValidationException("Endpoint is already active");
+        IsActive = true;
+    }
+    public WebhookEndpoint Update(string url, string description)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != "https")
+            throw new ValidationException("Webhook endpoint URL must be a valid HTTPS URL");
+        Url = url;
+        Description = description;
+        return this;
     }
 }

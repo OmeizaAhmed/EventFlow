@@ -8,6 +8,7 @@ using EventFlow.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +24,21 @@ public static class DependencyInjection
         // DB Context
         services.AddDbContext<EventFlowDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-        // Identity
+
+        // Data protection
+        // environment is windows, use DPAPI to protect keys, otherwise use a different key protection mechanism
+        if(OperatingSystem.IsWindows())
+        {
+            services.AddDataProtection()
+                .SetApplicationName("EventFlow.Development")
+                .ProtectKeysWithDpapi();
+        }
+        else
+        {
+            throw new NotImplementedException("Data protection is not implemented for this operating system.");
+        }
+        
+
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {
             options.Password.RequireDigit = true;
@@ -46,7 +61,7 @@ public static class DependencyInjection
 
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();
-
+        services.AddScoped<ISigningKeyService, SigningKeyService>();
 
         // Authentication and Authorization
 

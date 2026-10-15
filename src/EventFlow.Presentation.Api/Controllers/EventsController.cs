@@ -6,8 +6,8 @@ using System.Security.Claims;
 namespace EventFlow.Presentation.Api.Controllers;
 
 [ApiController]
-[Route("api/projects/{projectId}/[controller]s")]
-public class EventController: ControllerBase
+[Route("api/projects/{projectId}/[controller]")]
+public class EventsController: ControllerBase
 {
 
     [Authorize(AuthenticationSchemes = ApiKeyDefaults.Scheme, Policy = ApiKeyDefaults.AnyKeyPolicy)]
