@@ -15,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+
 namespace EventFlow.Infrastructure;
 public static class DependencyInjection
 {
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRefreshRepository, RefreshRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IEndpointRepository, EndpointRepository>();
 
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();

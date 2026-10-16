@@ -26,7 +26,6 @@ try
     builder.Services.AddApplicationServices();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-
     var app = builder.Build();
     app.UseMiddleware<GlobalErrorHandler>();
     app.UseHttpsRedirection();
@@ -47,7 +46,8 @@ try
     app.Run();
 
 }
-catch (Exception ex)
+// EF Core design-time tools intentionally abort after building the host.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application start-up failed");
 }

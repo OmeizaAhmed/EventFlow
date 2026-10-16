@@ -377,7 +377,7 @@ public partial class ProjectServiceTests
     }
 
     // Records writes separately from seeded data so rejected operations cannot silently persist changes.
-    private sealed class ProjectRepositoryStub : IProjectRepository
+    internal sealed class ProjectRepositoryStub : IProjectRepository
     {
         public List<Project> Projects { get; } = [];
         public List<ProjectMembership> Memberships { get; } = [];

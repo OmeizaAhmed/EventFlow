@@ -8,7 +8,7 @@ namespace EventFlow.Presentation.Api.Controllers
 {
     [Route("api/projects/{projectId}/[controller]")]
     [ApiController]
-    [Authorize(Policy = "ValidUser")]
+    [Authorize(Policy = "ValidUserId")]
     public class EndpointsController : ControllerBase
     {
         private readonly IEndpointService _endpointService;

@@ -69,10 +69,16 @@ public class WebhookEndpoint
     }
     public WebhookEndpoint Update(string url, string description)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != "https")
-            throw new ValidationException("Webhook endpoint URL must be a valid HTTPS URL");
-        Url = url;
-        Description = description;
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != "https")
+                throw new ValidationException("Webhook endpoint URL must be a valid HTTPS URL");
+            Url = url;
+        }
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            Description = description;
+        }
         return this;
     }
 }

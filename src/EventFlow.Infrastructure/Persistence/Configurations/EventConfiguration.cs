@@ -1,9 +1,9 @@
-namespace EventFlow.Infrastructure.Persistence.Configurations;
 
 using EventFlow.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+namespace EventFlow.Infrastructure.Persistence.Configurations;
 public class EventConfiguration : IEntityTypeConfiguration<Event>
 {
     public void Configure(EntityTypeBuilder<Event> builder)

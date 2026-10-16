@@ -1,9 +1,10 @@
-namespace EventFlow.Infrastructure.Repositories;
 using EventFlow.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Application.DTOs;
 
+
+namespace EventFlow.Infrastructure.Repositories;
 public class IdentityRepository : IIdentityRepository
 {
     private readonly UserManager<ApplicationUser> _userManager; 

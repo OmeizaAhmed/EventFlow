@@ -25,7 +25,7 @@ public class TokenServiceTest
         if (secretKey != null) settings["JwtSettings:SecretKey"] = secretKey;
         if (issuer != null) settings["JwtSettings:Issuer"] = issuer;
         if (audience != null) settings["JwtSettings:Audience"] = audience;
-        if (expirationInMinutes != null) settings["JwtSettings:ExpirationInMinutes"] = expirationInMinutes;
+        if (expirationInMinutes != null) settings["JwtSettings:ExpiresInMinutes"] = expirationInMinutes;
 
         return new ConfigurationBuilder()
             .AddInMemoryCollection(settings)

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using EventFlow.Domain.Entities;
 
+namespace EventFlow.Infrastructure.Persistence.Configurations;
+
 public class EventSubscriptionConfiguration : IEntityTypeConfiguration<EventSubscription>
 {
     public void Configure(EntityTypeBuilder<EventSubscription> builder)

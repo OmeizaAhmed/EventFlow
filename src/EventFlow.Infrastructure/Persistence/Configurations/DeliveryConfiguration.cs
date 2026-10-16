@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using EventFlow.Domain.Entities;
+
+namespace EventFlow.Infrastructure.Persistence.Configurations;
 public class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
 {
     public void Configure(EntityTypeBuilder<Delivery> builder)

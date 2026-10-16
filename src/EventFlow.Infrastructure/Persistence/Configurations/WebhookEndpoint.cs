@@ -1,9 +1,9 @@
-namespace EventFlow.Infrastructure.Persistence.Configurations;
 
 using EventFlow.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+namespace EventFlow.Infrastructure.Persistence.Configurations;
 public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndpoint>
 {
     public void Configure(EntityTypeBuilder<WebhookEndpoint> builder)
@@ -12,6 +12,7 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         builder.HasKey(e => e.EndpointId);
 
         builder.Property(e => e.Url).IsRequired().HasMaxLength(2048);
+        builder.Property(e => e.Description).HasMaxLength(1024);
 
         // SigningSecret is a value object embedded in this table, not its own table
         builder.OwnsOne(e => e.SigningSecret, sb =>

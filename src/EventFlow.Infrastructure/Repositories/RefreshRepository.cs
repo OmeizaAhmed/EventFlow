@@ -1,11 +1,10 @@
-namespace EventFlow.Infrastructure.Repositories;
-
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
+namespace EventFlow.Infrastructure.Repositories;
 public class RefreshRepository : IRefreshRepository
 {
     private readonly EventFlowDbContext _context;

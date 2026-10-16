@@ -1,12 +1,15 @@
-namespace EventFlow.Infrastructure.Persistence;
     
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Persistence.Configurations;
+using EventFlow.Infrastructure.Persistence.Migrations;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
+namespace EventFlow.Infrastructure.Persistence;
 public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
     public EventFlowDbContext(DbContextOptions<EventFlowDbContext> options)
@@ -32,3 +35,4 @@ public class EventFlowDbContext : IdentityDbContext<ApplicationUser, IdentityRol
        
     }
 }
+
