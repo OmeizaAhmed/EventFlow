@@ -165,5 +165,83 @@ namespace EventFlow.Application.Services
             endpoint.Deactivate();
             await _endpointRepository.UpdateEndpointAsync(endpoint);
         }
+
+        // Additional methods for managing event subscriptions can be added here, following a similar pattern of permission checks and repository interactions.
+
+        public async Task<EventSubscriptionOutput> CreateSubscriptionAsync(CreateEventSubscriptionInput input)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(input.UserId, input.ProjectId);
+            if (membership == null || !membership.CanManageEndpoints())
+            {
+                throw new ForbiddenException("User does not have permission to create a subscription for this endpoint.");
+            }
+            var endpoint = await _endpointRepository.GetEndpointByIdAsync(input.EndpointId);
+            if (endpoint == null || endpoint.ProjectId != input.ProjectId)
+            {
+                throw new NotFoundException("Endpoint", input.EndpointId);
+            }
+            var subscription = endpoint.Subscribe(input.EventType);
+            await _endpointRepository.CreateSubscriptionAsync(subscription);
+            return new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt);
+        }
+
+        public async Task<EventSubscriptionOutput> GetSubscriptionAsync(Guid subscriptionId, Guid projectId, Guid userId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null || !membership.CanManageEndpoints())
+            {
+                throw new ForbiddenException("User does not have permission to view this subscription.");
+            }
+            var subscription = await _endpointRepository.GetSubscriptionByIdAsync(subscriptionId);
+            if (subscription == null || subscription.ProjectId != projectId)
+            {
+                throw new NotFoundException("Subscription", subscriptionId);
+            }
+            return new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt);
+        }
+
+        public async Task<IEnumerable<EventSubscriptionOutput>> GetSubscriptionsAsync(Guid endpointId, Guid projectId, Guid userId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null || !membership.CanManageEndpoints())
+            {
+                throw new ForbiddenException("User does not have permission to view subscriptions for this endpoint.");
+            }
+            var subscriptions = await _endpointRepository.GetAllSubscriptionsAsync(endpointId);
+            return subscriptions.Select(subscription => new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt));
+        }
+
+        public async Task<EventSubscriptionOutput> UpdateSubscriptionAsync(UpdateEventSubscriptionInput input)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(input.UserId, input.ProjectId);
+            if (membership == null || !membership.CanManageEndpoints())
+            {
+                throw new ForbiddenException("User does not have permission to update this subscription.");
+            }
+            var subscription = await _endpointRepository.GetSubscriptionByIdAsync(input.SubscriptionId);
+            if (subscription == null || subscription.ProjectId != input.ProjectId)
+            {
+                throw new NotFoundException("Subscription", input.SubscriptionId);
+            }
+            subscription.UpdateEventType(input.EventType);
+            await _endpointRepository.UpdateSubscriptionAsync(subscription);
+            return new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt);
+        }
+
+        public async Task DeleteSubscriptionAsync(Guid subscriptionId, Guid projectId, Guid userId)
+        {
+            var membership = await _projectRepository.GetMembershipAsync(userId, projectId);
+            if (membership == null || !membership.CanManageEndpoints())
+            {
+                throw new ForbiddenException("User does not have permission to delete this subscription.");
+            }
+            var subscription = await _endpointRepository.GetSubscriptionByIdAsync(subscriptionId);
+            if (subscription == null || subscription.ProjectId != projectId)
+            {
+                throw new NotFoundException("Subscription", subscriptionId);
+            }
+            await _endpointRepository.DeleteSubscriptionAsync(subscriptionId);
+        }
+            
     }
 }

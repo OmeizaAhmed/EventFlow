@@ -53,6 +53,38 @@ namespace EventFlow.Infrastructure.Repositories
         {
             await _dbContext.SaveChangesAsync();
         }
+        // Additional methods for managing event subscriptions
+        public async Task<EventSubscription> CreateSubscriptionAsync(EventSubscription subscription)
+        {
+            _dbContext.EventSubscriptions.Add(subscription);
+            await _dbContext.SaveChangesAsync();
+            return subscription;
+        }
+        public async Task<EventSubscription?> GetSubscriptionByIdAsync(Guid subscriptionId)
+        {
+            return await _dbContext.EventSubscriptions.FindAsync(subscriptionId);
+        }
+        public async Task<IEnumerable<EventSubscription>> GetAllSubscriptionsAsync(Guid endpointId)
+        {
+            return await _dbContext.EventSubscriptions
+                .Where(s => s.EndpointId == endpointId)
+                .ToListAsync();
+        }
+        public async Task<EventSubscription> UpdateSubscriptionAsync(EventSubscription subscription)
+        {
+            _dbContext.EventSubscriptions.Update(subscription);
+            await _dbContext.SaveChangesAsync();
+            return subscription;
+        }
+        public async Task DeleteSubscriptionAsync(Guid subscriptionId)
+        {
+            var subscription = await _dbContext.EventSubscriptions.FindAsync(subscriptionId);
+            if (subscription != null)
+            {
+                _dbContext.EventSubscriptions.Remove(subscription);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
     }
 }
 

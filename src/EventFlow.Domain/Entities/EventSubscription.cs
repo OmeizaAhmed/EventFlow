@@ -1,3 +1,5 @@
+using EventFlow.Domain.Exceptions;
+
 namespace EventFlow.Domain.Entities;
 public class EventSubscription
 {
@@ -16,7 +18,15 @@ public class EventSubscription
         EventSubscriptionId = Guid.NewGuid();
         EndpointId = endpointId;
         ProjectId = projectId;
-        EventType = eventType;
+        EventType = eventType.ToLowerInvariant().Trim();
         CreatedAt = DateTime.UtcNow;
+    }
+
+    // Update the event type of the subscription
+    public void UpdateEventType(string newEventType)
+    {
+        if (string.IsNullOrWhiteSpace(newEventType))
+            throw new ValidationException("Event type cannot be null or empty");
+        EventType = newEventType.ToLowerInvariant().Trim();
     }
 }

@@ -38,4 +38,32 @@ namespace EventFlow.Application.DTOs
         bool IsActive,
         DateTime CreatedAt
     );
+
+    // Additional DTOs for event subscriptions
+    public record EventSubscriptionRequest(
+       string EventType
+    );
+
+    public record CreateEventSubscriptionInput(
+        Guid ProjectId,
+        Guid EndpointId,
+        Guid UserId,
+        string EventType
+    );
+
+    public record UpdateEventSubscriptionInput(
+        Guid SubscriptionId,
+        Guid ProjectId,
+        Guid EndpointId,
+        Guid UserId,
+        string EventType
+    );
+
+    public record EventSubscriptionOutput(
+        Guid SubscriptionId,
+        Guid ProjectId,
+        Guid EndpointId,
+        string EventType,
+        DateTime CreatedAt
+    );
 }

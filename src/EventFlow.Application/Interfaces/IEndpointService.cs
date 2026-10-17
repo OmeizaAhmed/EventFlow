@@ -14,5 +14,12 @@ namespace EventFlow.Application.Interfaces
         Task DeleteEndpointAsync(Guid endpointId, Guid projectId, Guid userId);
         Task ActivateEndpointAsync(Guid endpointId, Guid projectId, Guid userId);
         Task DeactivateEndpointAsync(Guid endpointId, Guid projectId, Guid userId);
+
+        // Additional methods for managing event subscriptions
+        Task<EventSubscriptionOutput> CreateSubscriptionAsync(CreateEventSubscriptionInput input);
+        Task<EventSubscriptionOutput> GetSubscriptionAsync(Guid subscriptionId, Guid projectId, Guid userId);
+        Task<IEnumerable<EventSubscriptionOutput>> GetSubscriptionsAsync(Guid endpointId, Guid projectId, Guid userId);
+        Task<EventSubscriptionOutput> UpdateSubscriptionAsync(UpdateEventSubscriptionInput input);
+        Task DeleteSubscriptionAsync(Guid subscriptionId, Guid projectId, Guid userId);
     }
 }

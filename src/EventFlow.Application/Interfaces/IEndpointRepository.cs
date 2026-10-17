@@ -13,5 +13,12 @@ namespace EventFlow.Application.Interfaces
         Task<WebhookEndpoint> UpdateEndpointAsync(WebhookEndpoint endpoint);
         Task DeleteEndpointAsync(Guid endpointId);
         Task SaveChangesAsync();
+
+        // Additional methods for managing event subscriptions
+        Task<EventSubscription> CreateSubscriptionAsync(EventSubscription subscription);
+        Task<EventSubscription?> GetSubscriptionByIdAsync(Guid subscriptionId);
+        Task<IEnumerable<EventSubscription>> GetAllSubscriptionsAsync(Guid endpointId);
+        Task<EventSubscription> UpdateSubscriptionAsync(EventSubscription subscription);
+        Task DeleteSubscriptionAsync(Guid subscriptionId);
     }
 }

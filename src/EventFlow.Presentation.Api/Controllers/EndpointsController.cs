@@ -68,6 +68,44 @@ namespace EventFlow.Presentation.Api.Controllers
             await _endpointService.DeactivateEndpointAsync(endpointId, projectId, _currentUser.UserId);
             return NoContent();
         }
+
+        // Event subscription endpoints
+        [HttpPost("{endpointId}/subscriptions")]
+        public async Task<IActionResult> SubscribeToEvent(Guid projectId, Guid endpointId, [FromBody] EventSubscriptionRequest input)
+        {
+            var subscriptionInput = new CreateEventSubscriptionInput(endpointId, projectId, _currentUser.UserId, input.EventType);
+            var result = await _endpointService.CreateSubscriptionAsync(subscriptionInput);
+            return CreatedAtAction(nameof(GetSubscription), new { projectId = result.ProjectId, endpointId = result.EndpointId, subscriptionId = result.EventSubscriptionId }, result);
+        }
+
+        [HttpGet("{endpointId}/subscriptions/{subscriptionId}")]
+        public async Task<IActionResult> GetSubscription(Guid projectId, Guid endpointId, Guid subscriptionId)
+        {
+            var result = await _endpointService.GetSubscriptionAsync(subscriptionId, projectId, _currentUser.UserId);
+            return Ok(result);
+        }
+
+        [HttpGet("{endpointId}/subscriptions")]
+        public async Task<IActionResult> GetSubscriptions(Guid projectId, Guid endpointId)
+        {
+            var result = await _endpointService.GetSubscriptionsAsync(endpointId, projectId, _currentUser.UserId);
+            return Ok(result);
+        }
+        
+        [HttpPut("{endpointId}/subscriptions/{subscriptionId}")]
+        public async Task<IActionResult> UpdateSubscription(Guid projectId, Guid endpointId, Guid subscriptionId, [FromBody] EventSubscriptionRequest input)
+        {
+            var subscriptionInput = new UpdateEventSubscriptionInput(subscriptionId, projectId, endpointId, _currentUser.UserId, input.EventType);
+            var result = await _endpointService.UpdateSubscriptionAsync(subscriptionInput);
+            return Ok(result);
+        }
+
+        [HttpDelete("{endpointId}/subscriptions/{subscriptionId}")]
+        public async Task<IActionResult> DeleteSubscription(Guid projectId, Guid endpointId, Guid subscriptionId)
+        {
+            await _endpointService.DeleteSubscriptionAsync(subscriptionId, projectId, _currentUser.UserId);
+            return NoContent();
+        }
     }
-    
+
 }
