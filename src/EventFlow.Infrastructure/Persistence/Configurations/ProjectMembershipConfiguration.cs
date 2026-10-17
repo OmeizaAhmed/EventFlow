@@ -30,6 +30,16 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
                 .HasForeignKey(pm => pm.UserId)
                 .IsRequired();
 
+            builder.HasOne(pm => pm.InvitedByUser)
+                .WithMany(u => u.InvitedMemberships)
+                .HasForeignKey(pm => pm.InvitedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(pm => pm.LastModifiedByUser)
+                .WithMany(u => u.LastModifiedMemberships)
+                .HasForeignKey(pm => pm.LastModifiedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
 
         }
     }

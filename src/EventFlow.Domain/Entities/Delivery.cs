@@ -6,7 +6,9 @@ public class Delivery
 {
     public Guid DeliveryId { get; private set; }
     public Guid EventId { get; private set; }
+    public Event Event { get; private set; } = null!;
     public Guid EndpointId { get; private set; }
+    public WebhookEndpoint Endpoint { get; private set; } = null!;
     public DeliveryStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? NextRetryAt { get; private set; }

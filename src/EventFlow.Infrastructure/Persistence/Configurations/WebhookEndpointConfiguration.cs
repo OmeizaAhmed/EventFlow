@@ -21,11 +21,13 @@ public class WebhookEndpointConfiguration : IEntityTypeConfiguration<WebhookEndp
         });
 
         builder.HasMany(e => e.Subscriptions)
-               .WithOne()
+               .WithOne(s => s.Endpoint)
                .HasForeignKey(s => s.EndpointId)
                .OnDelete(DeleteBehavior.Cascade);
 
         builder.Metadata.FindNavigation(nameof(WebhookEndpoint.Subscriptions))!
                .SetPropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(e => e.Deliveries).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

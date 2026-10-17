@@ -16,6 +16,15 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
             builder.Property(u => u.CreatedAt).IsRequired();
             builder.Property(u => u.FirstName).IsRequired().HasMaxLength(50);
             builder.Property(u => u.LastName).IsRequired().HasMaxLength(50);
+            // Keep the Identity dependency in Infrastructure, out of the domain entity.
+            builder.HasOne<EventFlow.Infrastructure.Identity.ApplicationUser>()
+                .WithOne(u => u.DomainUser)
+                .HasForeignKey<DomainUser>(u => u.AuthId)
+                .OnDelete(DeleteBehavior.Restrict);
+            builder.Navigation(u => u.ProjectMemberships).UsePropertyAccessMode(PropertyAccessMode.Field);
+            builder.Navigation(u => u.InvitedMemberships).UsePropertyAccessMode(PropertyAccessMode.Field);
+            builder.Navigation(u => u.LastModifiedMemberships).UsePropertyAccessMode(PropertyAccessMode.Field);
+            builder.Navigation(u => u.RefreshTokens).UsePropertyAccessMode(PropertyAccessMode.Field);
         }
     }
 }

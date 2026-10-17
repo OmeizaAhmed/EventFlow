@@ -24,5 +24,6 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Idempotency only needs to be unique per project, not globally —
         // two different customers could legitimately reuse the same key value
         builder.HasIndex(e => new { e.ProjectId, e.IdempotencyKey }).IsUnique();
+        builder.Navigation(e => e.Deliveries).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

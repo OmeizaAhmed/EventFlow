@@ -8,6 +8,8 @@ public class Project
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+    private readonly List<EventSubscription> _subscriptions = new();
+    public IReadOnlyCollection<EventSubscription> Subscriptions => _subscriptions.AsReadOnly();
     private readonly List<ProjectMembership> _projectMemberships = new();
     public IReadOnlyCollection<ProjectMembership> ProjectMemberships =>
         _projectMemberships.AsReadOnly();
@@ -17,6 +19,9 @@ public class Project
 
     private readonly List<WebhookEndpoint> _endpoints = new();
     public IReadOnlyCollection<WebhookEndpoint> Endpoints => _endpoints.AsReadOnly();
+
+    private readonly List<Event> _events = new();
+    public IReadOnlyCollection<Event> Events => _events.AsReadOnly();
 
     private Project() { } // EF Core
 

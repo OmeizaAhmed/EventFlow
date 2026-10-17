@@ -5,6 +5,7 @@ public class WebhookEndpoint
 {
     public Guid EndpointId { get; private set; }
     public Guid ProjectId { get; private set; }
+    public Project Project { get; private set; } = null!;
     public string Url { get; private set; } = string.Empty;
     public SigningSecret SigningSecret { get; private set; } = null!;
     public string Description { get; private set; } = string.Empty;
@@ -13,6 +14,9 @@ public class WebhookEndpoint
 
     private readonly List<EventSubscription> _subscriptions = new();
     public IReadOnlyCollection<EventSubscription> Subscriptions => _subscriptions.AsReadOnly();
+
+    private readonly List<Delivery> _deliveries = new();
+    public IReadOnlyCollection<Delivery> Deliveries => _deliveries.AsReadOnly();
 
     private WebhookEndpoint() { } // EF Core
 
@@ -41,7 +45,7 @@ public class WebhookEndpoint
         if (_subscriptions.Any(s => s.EventType == eventType))
             throw new ValidationException($"Endpoint is already subscribed to {eventType}");
 
-        var subscription = new EventSubscription(EndpointId, eventType);
+        var subscription = new EventSubscription(EndpointId, ProjectId, eventType);
         _subscriptions.Add(subscription);
         return subscription;
     }

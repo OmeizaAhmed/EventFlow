@@ -16,7 +16,9 @@ public class ProjectMembership
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public Guid? InvitedByUserId { get; private set; }
+    public DomainUser? InvitedByUser { get; private set; }
     public Guid? LastModifiedByUserId { get; private set; }
+    public DomainUser? LastModifiedByUser { get; private set; }
 
     private ProjectMembership() { }
     internal static ProjectMembership Create(Guid userId, Guid projectId)

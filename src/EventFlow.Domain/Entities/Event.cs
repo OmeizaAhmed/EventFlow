@@ -5,10 +5,14 @@ public class Event
 {
     public Guid EventId { get; private set; }
     public Guid ProjectId { get; private set; }
+    public Project Project { get; private set; } = null!;
     public string EventType { get; private set; } = null!;
     public string Payload { get; private set; } = string.Empty; // raw JSON
     public string? IdempotencyKey { get; private set; }
     public DateTime CreatedAt { get; private set; }
+
+    private readonly List<Delivery> _deliveries = new();
+    public IReadOnlyCollection<Delivery> Deliveries => _deliveries.AsReadOnly();
 
     private Event() { } // EF Core
 

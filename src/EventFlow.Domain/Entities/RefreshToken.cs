@@ -3,6 +3,7 @@ public class RefreshToken
 {
     public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
+    public DomainUser User { get; private set; } = null!;
     public string Token { get; private set; } = string.Empty;
     public DateTime ExpiresAt { get; private set; }
     public DateTime? RevokedAt { get; private set; }

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Incident Report"
+  short_description: "Turn debugging incidents into clear LinkedIn stories"
+  default_prompt: "Use $incident-report to write a LinkedIn incident report about the issue we just resolved."
+policy:
+  allow_implicit_invocation: true

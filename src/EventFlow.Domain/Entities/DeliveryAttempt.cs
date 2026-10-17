@@ -4,6 +4,7 @@ public class DeliveryAttempt
 {
     public Guid DeliveryAttemptId { get; private set; }
     public Guid DeliveryId { get; private set; }       // FK back to parent
+    public Delivery Delivery { get; private set; } = null!;
     public int AttemptNumber { get; private set; }
     public int? HttpStatusCode { get; private set; }
     public string? ErrorMessage { get; private set; }

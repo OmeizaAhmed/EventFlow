@@ -4,6 +4,7 @@ public class ApiKey
 {
     public Guid ApiKeyId { get; private set; }
     public Guid ProjectId { get; private set; }
+    public Project Project { get; private set; } = null!;
     public string HashedKey { get; private set; } = string.Empty;
     public string KeyPrefix { get; private set; } = string.Empty; // shown in dashboard, e.g. "ef_live_8a2f..."
     public bool IsLive { get; private set; }

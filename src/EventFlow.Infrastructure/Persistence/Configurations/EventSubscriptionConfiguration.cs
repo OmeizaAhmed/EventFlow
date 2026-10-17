@@ -15,6 +15,7 @@ public class EventSubscriptionConfiguration : IEntityTypeConfiguration<EventSubs
                .HasConversion<string>()   // enum stored as readable text, not an int
                .HasMaxLength(100);
 
+                
         // A given endpoint can't subscribe to the same event type twice —
         // enforces at the DB level what WebhookEndpoint.Subscribe() already checks in memory
         builder.HasIndex(s => new { s.EndpointId, s.EventType }).IsUnique();

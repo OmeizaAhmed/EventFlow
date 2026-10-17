@@ -15,6 +15,15 @@ public class DomainUser
     public IReadOnlyCollection<ProjectMembership> ProjectMemberships =>
         _projectMemberships.AsReadOnly();
 
+    private readonly List<ProjectMembership> _invitedMemberships = new();
+    public IReadOnlyCollection<ProjectMembership> InvitedMemberships => _invitedMemberships.AsReadOnly();
+
+    private readonly List<ProjectMembership> _lastModifiedMemberships = new();
+    public IReadOnlyCollection<ProjectMembership> LastModifiedMemberships => _lastModifiedMemberships.AsReadOnly();
+
+    private readonly List<RefreshToken> _refreshTokens = new();
+    public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
+
     private DomainUser() { } // EF Core
 
     public static DomainUser Create(string email, string firstName, string lastName, Guid authId)

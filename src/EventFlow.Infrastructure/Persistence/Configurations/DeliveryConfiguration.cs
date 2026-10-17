@@ -11,7 +11,7 @@ public class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
         builder.HasKey(d => d.DeliveryId);
 
         builder.HasMany(d => d.Attempts)
-               .WithOne()                          // no inverse nav property needed on DeliveryAttempt
+               .WithOne(a => a.Delivery)
                .HasForeignKey(a => a.DeliveryId)
                .OnDelete(DeleteBehavior.Cascade);   // deleting a Delivery deletes its Attempts
 
@@ -20,5 +20,15 @@ public class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
                .SetPropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(d => d.AttemptCount);        // derived, not a column
+
+        builder.HasOne(d => d.Event)
+               .WithMany(e => e.Deliveries)
+               .HasForeignKey(d => d.EventId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(d => d.Endpoint)
+               .WithMany(e => e.Deliveries)
+               .HasForeignKey(d => d.EndpointId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

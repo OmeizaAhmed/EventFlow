@@ -16,6 +16,10 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
             builder.Property(rt => rt.RevokedAt);
             builder.Property(rt => rt.CreatedAt).IsRequired();
             builder.Property(rt => rt.LastUsedAt).IsRequired();
+            builder.HasOne(rt => rt.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
