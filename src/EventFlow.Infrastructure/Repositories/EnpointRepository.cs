@@ -34,6 +34,18 @@ namespace EventFlow.Infrastructure.Repositories
                 .Where(e => e.ProjectId == projectId)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<WebhookEndpoint>> GetEndpointsByEventTypeAsync(Guid projectId, string eventType, bool onlyActive = true)
+        {
+               var subscriptions = await _dbContext.EventSubscriptions
+                .AsNoTracking()
+                .Include(s => s.Endpoint)
+                .Where(s => s.EventType == eventType && s.Endpoint.ProjectId == projectId && (!onlyActive || s.Endpoint.IsActive))
+                .ToListAsync();
+
+            return subscriptions.Select(s => s.Endpoint);
+        }
+
         public async Task<WebhookEndpoint> UpdateEndpointAsync(WebhookEndpoint endpoint)
         {
             _dbContext.WebhookEndpoints.Update(endpoint);

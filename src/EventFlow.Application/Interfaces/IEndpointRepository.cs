@@ -9,6 +9,7 @@ namespace EventFlow.Application.Interfaces
     {
         Task<WebhookEndpoint> CreateEndpointAsync(WebhookEndpoint endpoint);
         Task<WebhookEndpoint?> GetEndpointByIdAsync(Guid endpointId);
+        Task<IEnumerable<WebhookEndpoint>> GetEndpointsByEventTypeAsync(Guid projectId, string eventType, bool onlyActive = true);
         Task<IEnumerable<WebhookEndpoint>> GetAllEndpointsAsync(Guid projectId);
         Task<WebhookEndpoint> UpdateEndpointAsync(WebhookEndpoint endpoint);
         Task DeleteEndpointAsync(Guid endpointId);
