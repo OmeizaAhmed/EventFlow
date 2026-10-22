@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
@@ -65,8 +66,30 @@ public static class DependencyInjection
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();
         services.AddScoped<ISigningKeyService, SigningKeyService>();
-        services.AddScoped<IWebhookSignatureGenerator, WebhookSignatureGenerator>();
-        services.AddScoped<IWebhookSender, WebhookSender>();
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton<IWebhookSignatureGenerator, WebhookSignatureGenerator>();
+        services.AddOptions<WebhookSenderOptions>()
+            .Bind(configuration.GetSection(WebhookSenderOptions.SectionName))
+            .Validate(options => options.Timeout > TimeSpan.Zero &&
+                options.Timeout.TotalMilliseconds <= uint.MaxValue - 1,
+                "WebhookSender:Timeout must be positive and within the supported timer range.")
+            .Validate(options => options.MaxResponseBodyBytes >= 0,
+                "WebhookSender:MaxResponseBodyBytes must be non-negative.")
+            .Validate(options =>
+            {
+                using var request = new HttpRequestMessage();
+                return !string.IsNullOrWhiteSpace(options.UserAgent) &&
+                    request.Headers.UserAgent.TryParseAdd(options.UserAgent);
+            }, "WebhookSender:UserAgent must be a valid, non-empty User-Agent header.")
+            .ValidateOnStart();
+        services.AddHttpClient<IWebhookSender, WebhookSender>(client =>
+            client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
         
 
         // Authentication and Authorization

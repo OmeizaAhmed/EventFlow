@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Net;
-using System.Security.Cryptography;
+using System.Buffers;
+using System.Globalization;
 using System.Text;
 using EventFlow.Application.Interfaces;
 using EventFlow.Application.DTOs;
@@ -34,6 +35,9 @@ public sealed class WebhookSender : IWebhookSender
 
     public async Task<WebhookSendResult> SendAsync(WebhookSendRequest request, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ct.ThrowIfCancellationRequested();
+
         var attemptedAt = _time.GetUtcNow();
         var started = Stopwatch.GetTimestamp();
         TimeSpan Elapsed() => Stopwatch.GetElapsedTime(started);
@@ -45,7 +49,12 @@ public sealed class WebhookSender : IWebhookSender
                 "Endpoint URL is not a valid http(s) URL.", Elapsed(), attemptedAt, null);
         }
 
+        ArgumentNullException.ThrowIfNull(request.Payload);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Secret);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.EventType);
+
         var timestamp = attemptedAt.ToUnixTimeSeconds();
+        var timestampHeader = timestamp.ToString(CultureInfo.InvariantCulture);
         var signature = _signer.Sign(request.Secret, timestamp, request.Payload);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, uri)
@@ -56,11 +65,11 @@ public sealed class WebhookSender : IWebhookSender
         message.Headers.Add("EventFlow-Delivery-Id", request.DeliveryId.ToString());
         message.Headers.Add("EventFlow-Event-Id", request.EventId.ToString());
         message.Headers.Add("EventFlow-Event-Type", request.EventType);
-        message.Headers.Add("EventFlow-Timestamp", timestamp.ToString());
-        message.Headers.Add("EventFlow-Signature", $"t={timestamp},v1={signature}");
+        message.Headers.Add("EventFlow-Timestamp", timestampHeader);
+        message.Headers.Add("EventFlow-Signature", $"t={timestampHeader},v1={signature}");
 
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(_options.Timeout);
+        using var attemptTimeout = new CancellationTokenSource(_options.Timeout, _time);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct, attemptTimeout.Token);
 
         try
         {
@@ -74,7 +83,8 @@ public sealed class WebhookSender : IWebhookSender
             TimeSpan? retryAfter = null;
             var ra = response.Headers.RetryAfter;
             if (ra?.Delta is { } delta) retryAfter = delta;
-            else if (ra?.Date is { } date) retryAfter = date - attemptedAt is { } d && d > TimeSpan.Zero ? d : null;
+            else if (ra?.Date is { } date) retryAfter = date - _time.GetUtcNow();
+            if (retryAfter < TimeSpan.Zero) retryAfter = TimeSpan.Zero;
 
             _logger.LogInformation(
                 "Webhook delivery {DeliveryId} to {Host} -> {Status} ({Outcome}) in {Ms}ms",
@@ -94,11 +104,20 @@ public sealed class WebhookSender : IWebhookSender
         }
         catch (HttpRequestException ex)
         {
+            ct.ThrowIfCancellationRequested();
             // DNS failure, connection refused, TLS error, etc.
             _logger.LogWarning(ex, "Webhook delivery {DeliveryId} to {Host} failed to connect",
                 request.DeliveryId, uri.Host);
             return new WebhookSendResult(WebhookSendOutcome.RetryableFailure, null, null,
                 $"Connection error: {ex.Message}", Elapsed(), attemptedAt, null);
+        }
+        catch (IOException ex)
+        {
+            ct.ThrowIfCancellationRequested();
+            _logger.LogWarning(ex, "Webhook delivery {DeliveryId} to {Host} failed while reading the response",
+                request.DeliveryId, uri.Host);
+            return new WebhookSendResult(WebhookSendOutcome.RetryableFailure, null, null,
+                $"Response read error: {ex.Message}", Elapsed(), attemptedAt, null);
         }
     }
 
@@ -106,24 +125,31 @@ public sealed class WebhookSender : IWebhookSender
     {
         var status = (int)code;
         if (status is >= 200 and < 300) return WebhookSendOutcome.Success;
-        if (status is 408 or 425 or 429 or >= 500) return WebhookSendOutcome.RetryableFailure;
+        if (status is 408 or 425 or 429 or (>= 500 and < 600)) return WebhookSendOutcome.RetryableFailure;
         return WebhookSendOutcome.PermanentFailure; // 3xx (not followed) and other 4xx
     }
 
     private async Task<string> ReadTruncatedAsync(HttpContent content, CancellationToken ct)
     {
+        var limit = _options.MaxResponseBodyBytes;
+        if (limit == 0) return string.Empty;
+
         await using var stream = await content.ReadAsStreamAsync(ct);
-        var buffer = new byte[_options.MaxResponseBodyBytes];
-        var total = 0;
-        while (total < buffer.Length)
+        var buffer = ArrayPool<byte>.Shared.Rent(limit);
+        try
         {
-            var read = await stream.ReadAsync(buffer.AsMemory(total), ct);
-            if (read == 0) break;
-            total += read;
+            var total = 0;
+            while (total < limit)
+            {
+                var read = await stream.ReadAsync(buffer.AsMemory(total, limit - total), ct);
+                if (read == 0) break;
+                total += read;
+            }
+            return Encoding.UTF8.GetString(buffer, 0, total);
         }
-        return Encoding.UTF8.GetString(buffer, 0, total);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+        }
     }
 }
-
-
-

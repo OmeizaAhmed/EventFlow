@@ -1,7 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace EventFlow.Infrastructure.Services
 {
     public sealed class WebhookSenderOptions
@@ -11,7 +7,7 @@ namespace EventFlow.Infrastructure.Services
         /// <summary>Hard cap for a single attempt (connect + send + read response).</summary>
         public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(10);
 
-        /// <summary>Response bodies are stored for debugging but truncated to this size.</summary>
+        /// <summary>Maximum response bytes retained for debugging; zero disables body capture.</summary>
         public int MaxResponseBodyBytes { get; set; } = 4096;
 
         public string UserAgent { get; set; } = "EventFlow-Webhooks/1.0";
