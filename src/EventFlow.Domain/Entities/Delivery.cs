@@ -60,14 +60,12 @@ public class Delivery
 
     private bool CanTransitionTo(DeliveryStatus newStatus)
     {
-        // Implement your state transition logic here
-        return Status switch
-        {
-            DeliveryStatus.Queued => newStatus == DeliveryStatus.Delivered || newStatus == DeliveryStatus.Failed,
-            DeliveryStatus.Failed => newStatus == DeliveryStatus.RetryScheduled || newStatus == DeliveryStatus.DeadLetter,
-            DeliveryStatus.RetryScheduled => newStatus == DeliveryStatus.Delivered || newStatus == DeliveryStatus.Failed || newStatus == DeliveryStatus.DeadLetter,
-            DeliveryStatus.Delivered => false,
-            DeliveryStatus.DeadLetter => false,
+        return (Status, newStatus) switch
+            {
+            (DeliveryStatus.Processing, DeliveryStatus.Delivered or DeliveryStatus.Failed) => true,
+            (DeliveryStatus.Queued, DeliveryStatus.Processing or DeliveryStatus.Delivered or DeliveryStatus.Failed) => true,
+            (DeliveryStatus.Failed, DeliveryStatus.RetryScheduled or DeliveryStatus.DeadLetter) => true,
+            (DeliveryStatus.RetryScheduled, DeliveryStatus.Processing or DeliveryStatus.Delivered or DeliveryStatus.Failed or DeliveryStatus.DeadLetter) => true,
             _ => false
         };
     }

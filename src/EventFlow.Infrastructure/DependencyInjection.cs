@@ -65,6 +65,9 @@ public static class DependencyInjection
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();
         services.AddScoped<ISigningKeyService, SigningKeyService>();
+        services.AddScoped<IWebhookSignatureGenerator, WebhookSignatureGenerator>();
+        services.AddScoped<IWebhookSender, WebhookSender>();
+        
 
         // Authentication and Authorization
 

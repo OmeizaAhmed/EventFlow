@@ -30,7 +30,7 @@ public class EventsController: ControllerBase
         var input = new EventInput(projectId, eventRequest.EventType, eventRequest.Payload, idempotencyKey);
         var newEvent = await _eventService.CreateEventAsync(input);
         // return accepted
-        return Accepted(newEvent);
+        return Accepted();
     }
 
     

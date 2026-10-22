@@ -236,6 +236,18 @@ public sealed class EndpointServiceTests
         { Writes++; return Task.FromResult(endpoint); }
         public Task DeleteEndpointAsync(Guid id)
         { Writes++; Items.RemoveAll(e => e.EndpointId == id); return Task.CompletedTask; }
+        public Task<IEnumerable<WebhookEndpoint>> GetEndpointsByEventTypeAsync(Guid projectId, string eventType, bool onlyActive = true)
+        { Reads++; return Task.FromResult<IEnumerable<WebhookEndpoint>>(Items.Where(e => e.ProjectId == projectId && (!onlyActive || e.IsActive)).ToArray()); }
+        public Task<EventSubscription> CreateSubscriptionAsync(EventSubscription subscription)
+        { Writes++; return Task.FromResult(subscription); }
+        public Task<EventSubscription?> GetSubscriptionByIdAsync(Guid subscriptionId)
+        { Reads++; return Task.FromResult<EventSubscription?>(null); }
+        public Task<IEnumerable<EventSubscription>> GetAllSubscriptionsAsync(Guid endpointId)
+        { Reads++; return Task.FromResult<IEnumerable<EventSubscription>>(Array.Empty<EventSubscription>()); }  
+        public Task<EventSubscription> UpdateSubscriptionAsync(EventSubscription subscription)
+        { Writes++; return Task.FromResult(subscription); }
+        public Task DeleteSubscriptionAsync(Guid subscriptionId)
+        { Writes++; Items.RemoveAll(e => e.EndpointId == subscriptionId); return Task.CompletedTask; }
         public Task SaveChangesAsync() { Saves++; return Task.CompletedTask; }
     }
 }

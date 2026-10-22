@@ -1,3 +1,4 @@
+using EventFlow.Domain.Enums;
 namespace EventFlow.Domain.Entities;
 
 public class DeliveryAttempt
@@ -21,4 +22,6 @@ public class DeliveryAttempt
         AttemptedAt = attemptedAt;
         Succeeded = httpStatusCode is >= 200 and < 300;
     }
+
+    
 }

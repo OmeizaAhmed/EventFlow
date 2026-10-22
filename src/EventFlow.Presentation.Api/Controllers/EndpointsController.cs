@@ -73,9 +73,9 @@ namespace EventFlow.Presentation.Api.Controllers
         [HttpPost("{endpointId}/subscriptions")]
         public async Task<IActionResult> SubscribeToEvent(Guid projectId, Guid endpointId, [FromBody] EventSubscriptionRequest input)
         {
-            var subscriptionInput = new CreateEventSubscriptionInput(endpointId, projectId, _currentUser.UserId, input.EventType);
+            var subscriptionInput = new CreateEventSubscriptionInput(projectId, endpointId, _currentUser.UserId, input.EventType);
             var result = await _endpointService.CreateSubscriptionAsync(subscriptionInput);
-            return CreatedAtAction(nameof(GetSubscription), new { projectId = result.ProjectId, endpointId = result.EndpointId, subscriptionId = result.EventSubscriptionId }, result);
+            return CreatedAtAction(nameof(GetSubscription), new { projectId = result.ProjectId, endpointId = result.EndpointId, subscriptionId = result.SubscriptionId }, result);
         }
 
         [HttpGet("{endpointId}/subscriptions/{subscriptionId}")]
