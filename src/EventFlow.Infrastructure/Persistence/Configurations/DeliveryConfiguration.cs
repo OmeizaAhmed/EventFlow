@@ -9,6 +9,9 @@ public class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
     {
         builder.ToTable("Deliveries");
         builder.HasKey(d => d.DeliveryId);
+        builder.Property(d => d.LeaseToken).IsConcurrencyToken();
+        builder.HasIndex(d => new { d.Status, d.NextRetryAt, d.CreatedAt });
+        builder.HasIndex(d => new { d.Status, d.LeaseExpiresAt });
 
         builder.HasMany(d => d.Attempts)
                .WithOne(a => a.Delivery)

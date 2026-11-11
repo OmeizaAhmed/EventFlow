@@ -12,6 +12,8 @@ public class Delivery
     public DeliveryStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? NextRetryAt { get; private set; }
+    public Guid? LeaseToken { get; private set; }
+    public DateTime? LeaseExpiresAt { get; private set; }
 
     private readonly List<DeliveryAttempt> _attempts = new();
     public IReadOnlyCollection<DeliveryAttempt> Attempts => _attempts.AsReadOnly();
@@ -32,12 +34,29 @@ public class Delivery
     }
 
     public void RecordAttempt(int? httpStatusCode, string? errorMessage, bool succeeded)
+        => RecordAttempt(httpStatusCode, errorMessage, succeeded, DateTime.UtcNow, null, 0);
+
+    public void RecordAttempt(
+        int? httpStatusCode,
+        string? errorMessage,
+        bool succeeded,
+        DateTime attemptedAt,
+        string? responseBody,
+        long durationMilliseconds)
     {
         if (!CanTransitionTo(succeeded ? DeliveryStatus.Delivered : DeliveryStatus.Failed))
             throw new ValidationException($"Cannot record an attempt while Delivery is {Status}");
 
-        _attempts.Add(new DeliveryAttempt(AttemptCount + 1, httpStatusCode, errorMessage, DateTime.UtcNow));
+        if (durationMilliseconds < 0)
+            throw new ValidationException("Attempt duration cannot be negative");
+
+        _attempts.Add(new DeliveryAttempt(
+            DeliveryId, AttemptCount + 1, httpStatusCode, errorMessage, succeeded,
+            attemptedAt, responseBody, durationMilliseconds));
         Status = succeeded ? DeliveryStatus.Delivered : DeliveryStatus.Failed;
+        NextRetryAt = null;
+        LeaseToken = null;
+        LeaseExpiresAt = null;
     }
 
     public void ScheduleRetry(DateTime retryAt)

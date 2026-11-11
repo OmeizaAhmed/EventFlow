@@ -73,6 +73,13 @@ namespace EventFlow.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LeaseToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("NextRetryAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -85,13 +92,16 @@ namespace EventFlow.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("EventId");
 
+                    b.HasIndex("Status", "LeaseExpiresAt");
+
+                    b.HasIndex("Status", "NextRetryAt", "CreatedAt");
+
                     b.ToTable("Deliveries", (string)null);
                 });
 
             modelBuilder.Entity("EventFlow.Domain.Entities.DeliveryAttempt", b =>
                 {
                     b.Property<Guid>("DeliveryAttemptId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("AttemptNumber")
@@ -103,18 +113,25 @@ namespace EventFlow.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("DeliveryId")
                         .HasColumnType("uuid");
 
+                    b.Property<long>("DurationMilliseconds")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text");
 
                     b.Property<int?>("HttpStatusCode")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text");
+
                     b.Property<bool>("Succeeded")
                         .HasColumnType("boolean");
 
                     b.HasKey("DeliveryAttemptId");
 
-                    b.HasIndex("DeliveryId");
+                    b.HasIndex("DeliveryId", "AttemptNumber")
+                        .IsUnique();
 
                     b.ToTable("DeliveryAttempts", (string)null);
                 });

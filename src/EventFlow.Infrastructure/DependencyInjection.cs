@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IEndpointRepository, EndpointRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IDeliveryRepository, DeliveryRepository>();
 
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();
@@ -90,6 +91,26 @@ public static class DependencyInjection
                 UseCookies = false,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(5)
             });
+
+        services.AddOptions<DeliveryProcessingOptions>()
+            .Bind(configuration.GetSection(DeliveryProcessingOptions.SectionName))
+            .Validate(options => options.WorkerCount is >= 1 and <= 64,
+                "DeliveryProcessing:WorkerCount must be between 1 and 64.")
+            .Validate(options => options.PollInterval > TimeSpan.Zero && options.PollInterval <= TimeSpan.FromHours(1),
+                "DeliveryProcessing:PollInterval must be positive and at most one hour.")
+            .Validate(options => options.LeaseDuration > TimeSpan.Zero && options.LeaseDuration <= TimeSpan.FromDays(1),
+                "DeliveryProcessing:LeaseDuration must be positive and at most one day.")
+            .Validate<Microsoft.Extensions.Options.IOptions<WebhookSenderOptions>>((options, sender) =>
+                options.LeaseDuration > sender.Value.Timeout + TimeSpan.FromSeconds(10),
+                "DeliveryProcessing:LeaseDuration must exceed WebhookSender:Timeout by more than ten seconds.")
+            .Validate(options => options.MaxAttempts is >= 1 and <= 100,
+                "DeliveryProcessing:MaxAttempts must be between 1 and 100.")
+            .Validate(options => options.InitialRetryDelay > TimeSpan.Zero &&
+                options.MaxRetryDelay >= options.InitialRetryDelay && options.MaxRetryDelay <= TimeSpan.FromDays(30),
+                "DeliveryProcessing retry delays must be positive, ordered, and at most thirty days.")
+            .ValidateOnStart();
+        services.AddScoped<IDeliveryProcessor, DeliveryProcessor>();
+        services.AddHostedService<DeliveryWorker>();
         
 
         // Authentication and Authorization

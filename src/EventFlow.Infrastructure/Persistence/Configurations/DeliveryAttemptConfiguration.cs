@@ -10,6 +10,8 @@ public class DeliveryAttemptConfiguration : IEntityTypeConfiguration<DeliveryAtt
     {
         builder.ToTable("DeliveryAttempts");
         builder.HasKey(a => a.DeliveryAttemptId);
+        builder.Property(a => a.DeliveryAttemptId).ValueGeneratedNever();
+        builder.HasIndex(a => new { a.DeliveryId, a.AttemptNumber }).IsUnique();
 
         builder.Property(a => a.AttemptNumber).IsRequired();
         builder.Property(a => a.AttemptedAt).IsRequired();

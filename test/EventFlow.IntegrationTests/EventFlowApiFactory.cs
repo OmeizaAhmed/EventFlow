@@ -31,6 +31,7 @@ public sealed class EventFlowApiFactory : WebApplicationFactory<Program>
                 ["JwtSettings:Issuer"] = JwtIssuer,
                 ["JwtSettings:Audience"] = JwtAudience,
                 ["JwtSettings:ExpirationInMinutes"] = "60",
+                ["DeliveryProcessing:Enabled"] = "false",
                 ["ConnectionStrings:DefaultConnection"] = "Unused: replaced by the test SQLite connection",
                 ["Serilog:MinimumLevel:Default"] = "Warning"
             }));
