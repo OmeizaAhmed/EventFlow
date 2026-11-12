@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EventFlow.Application.Services
 {
@@ -15,11 +17,13 @@ namespace EventFlow.Application.Services
     {
         private readonly IProjectRepository _projectRepository;
         private readonly IApiKeyService _apiKeyService;
+        private readonly ILogger<ProjectService> _logger;
 
-        public ProjectService(IProjectRepository projectRepository, IApiKeyService apiKeyService)
+        public ProjectService(IProjectRepository projectRepository, IApiKeyService apiKeyService, ILogger<ProjectService>? logger = null)
         {
             _projectRepository = projectRepository;
             _apiKeyService = apiKeyService;
+            _logger = logger ?? NullLogger<ProjectService>.Instance;
         }
 
         public async Task<ProjectResponse> CreateProjectAsync(Guid userId, string name)
@@ -27,6 +31,7 @@ namespace EventFlow.Application.Services
             var projectCreationResponse = Project.Create(name, userId);
             // Atomically add the project and membership to the repository and return the response
             var project = await _projectRepository.AddAsync(projectCreationResponse);
+            _logger.LogInformation("Project {ProjectId} created by user {UserId}", project.ProjectId, userId);
             return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, projectCreationResponse.Membership.Role.ToString());
         }
 
@@ -64,6 +69,7 @@ namespace EventFlow.Application.Services
             var project = membership.Project;
             project.UpdateProject(name);
             await _projectRepository.UpdateAsync(project);
+            _logger.LogInformation("Project {ProjectId} updated by user {UserId}", projectId, userId);
             return new ProjectResponse(project.ProjectId, project.Name, project.CreatedAt, membership.Role.ToString());
         }
 
@@ -83,6 +89,7 @@ namespace EventFlow.Application.Services
             }
 
             await _projectRepository.DeleteAsync(membership.Project.ProjectId);
+            _logger.LogInformation("Project {ProjectId} deleted by user {UserId}", projectId, userId);
             return true;
         }
 
@@ -95,6 +102,7 @@ namespace EventFlow.Application.Services
             }
             var newMembership = inviterMembership.Invite(inviteeId);
             await _projectRepository.AddMembershipAsync(newMembership);
+            _logger.LogInformation("User {InviteeId} invited to project {ProjectId} by user {InviterId}", inviteeId, projectId, inviterId);
             return new InviteMemberResponse(
                 newMembership.ProjectMembershipId, 
                 newMembership.UserId, 
@@ -126,6 +134,7 @@ namespace EventFlow.Application.Services
 
             membership.UpdateRole(newRole, modifierMembership);
             await _projectRepository.UpdateMembershipAsync(membership);
+            _logger.LogInformation("Membership {MembershipId} role changed to {Role} in project {ProjectId}", membershipId, newRole, projectId);
 
             return new UpdateMemberRoleResponse(
                 membership.ProjectMembershipId,
@@ -152,6 +161,7 @@ namespace EventFlow.Application.Services
             var project = membership.Project;
             project.Deactivate();
             await _projectRepository.UpdateAsync(project);
+            _logger.LogInformation("Project {ProjectId} deactivated by user {UserId}", projectId, userId);
             return true;
         }
 
@@ -170,6 +180,7 @@ namespace EventFlow.Application.Services
             var project = membership.Project;
             project.Activate();
             await _projectRepository.UpdateAsync(project);
+            _logger.LogInformation("Project {ProjectId} activated by user {UserId}", projectId, userId);
             return true;
         }
 
@@ -242,6 +253,7 @@ namespace EventFlow.Application.Services
             
             var apiKey = project.GenerateApiKey(key.HashedKey, key.KeyPrefix, isLive);
             await _projectRepository.AddApiKeyAsync(apiKey);
+            _logger.LogInformation("API key {ApiKeyId} created for project {ProjectId} by user {UserId}", apiKey.ApiKeyId, projectId, userId);
             return new CreatedApiKeyResponse(
                 apiKey.ApiKeyId,
                 apiKey.ProjectId,
@@ -258,6 +270,7 @@ namespace EventFlow.Application.Services
             var apiKey = await GenerateApiKeyAsync(projectId, userId, isLive); // This will throw if the user doesn't have permission
             // Revoke the old API key after one hour grace period
             var revokeResult = await RevokeApiKeyAsync(projectId, userId, apiKeyId, DateTime.UtcNow.AddHours(1)); // This will throw if the user doesn't have permission
+            _logger.LogInformation("API key {OldApiKeyId} rotated to {NewApiKeyId} for project {ProjectId}", apiKeyId, apiKey.ApiKeyId, projectId);
             return apiKey;
         }
 
@@ -282,6 +295,7 @@ namespace EventFlow.Application.Services
             var project = membership.Project;
             var revokedApiKey = project.RevokeApiKey(apiKeyId, revokedAt);
             await _projectRepository.UpdateApiKeyAsync(revokedApiKey);
+            _logger.LogInformation("API key {ApiKeyId} revoked for project {ProjectId} by user {UserId}", apiKeyId, projectId, userId);
             return true;
         }
 

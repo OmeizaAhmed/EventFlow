@@ -6,16 +6,20 @@ using EventFlow.Domain.Entities;
 using EventFlow.Application.DTOs;
 using System.Text.Json.Nodes;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 namespace EventFlow.Application.Services;
 public class EventService : IEventService
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEndpointRepository _endpointRepository;
+    private readonly ILogger<EventService> _logger;
 
-    public EventService(IEventRepository eventRepository, IEndpointRepository endpointRepository)
+    public EventService(IEventRepository eventRepository, IEndpointRepository endpointRepository, ILogger<EventService>? logger = null)
     {
         _eventRepository = eventRepository;
         _endpointRepository = endpointRepository;
+        _logger = logger ?? NullLogger<EventService>.Instance;
     }
 
     public async Task<Event> CreateEventAsync(EventInput eventInput)
@@ -24,6 +28,7 @@ public class EventService : IEventService
         var existingEvent = await _eventRepository.GetEventByIdempotencyKeyAsync(eventInput.ProjectId, eventInput.IdempotencyKey);
         if (existingEvent != null)
         {
+            _logger.LogInformation("Duplicate event publication resolved to event {EventId} in project {ProjectId}", existingEvent.EventId, eventInput.ProjectId);
             return existingEvent;
         }
         var endpoints = await _endpointRepository.GetEndpointsByEventTypeAsync(eventInput.ProjectId, eventInput.EventType);
@@ -39,6 +44,7 @@ public class EventService : IEventService
 
         _eventRepository.AddEvent(newEvent);
         await _eventRepository.SaveChangesAsync();
+        _logger.LogInformation("Published event {EventId} in project {ProjectId} with {DeliveryCount} queued deliveries", newEvent.EventId, eventInput.ProjectId, endpoints.Count());
         return newEvent;
     }
 }

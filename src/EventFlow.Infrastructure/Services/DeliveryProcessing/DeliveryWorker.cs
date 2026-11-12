@@ -21,6 +21,7 @@ public sealed class DeliveryWorker(
             return Task.CompletedTask;
         }
 
+        logger.LogInformation("Starting {WorkerCount} delivery workers", settings.WorkerCount);
         return Task.WhenAll(Enumerable.Range(0, settings.WorkerCount)
             .Select(_ => RunAsync(stoppingToken)));
     }

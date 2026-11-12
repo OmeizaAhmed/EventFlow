@@ -4,6 +4,8 @@ using EventFlow.Domain.Entities;
 using EventFlow.Domain.Interfaces;
 using EventFlow.Application.DTOs;
 using EventFlow.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 public class AuthService : IAuthService
 {
@@ -11,13 +13,15 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly ITokenService _tokenService;
     private readonly IRefreshRepository _refreshRepository;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(IIdentityRepository identityRepository, IUserRepository userRepository, ITokenService tokenService, IRefreshRepository refreshRepository)
+    public AuthService(IIdentityRepository identityRepository, IUserRepository userRepository, ITokenService tokenService, IRefreshRepository refreshRepository, ILogger<AuthService>? logger = null)
     {
         _identityRepository = identityRepository;
         _userRepository = userRepository;
         _tokenService = tokenService;
         _refreshRepository = refreshRepository;
+        _logger = logger ?? NullLogger<AuthService>.Instance;
     }
 
     public async Task RegisterUserAsync(RegisterInput registerInput)
@@ -38,6 +42,7 @@ public class AuthService : IAuthService
         // add user to domain repository
         var User = DomainUser.Create(registerInput.Email, registerInput.FirstName, registerInput.LastName, identity.Id);
         await _userRepository.AddUserAsync(User);
+        _logger.LogInformation("Registered user {UserId}", User.UserId);
     } 
 
     public async Task<AuthOutput> LoginUserAsync(string email, string password)
@@ -45,6 +50,7 @@ public class AuthService : IAuthService
         var isPasswordValid = await _identityRepository.CheckPasswordAsync(email, password);
         if (!isPasswordValid)
         {
+            _logger.LogWarning("Login rejected due to invalid credentials");
             throw new ValidationException("Invalid email or password");
         }
 
@@ -61,6 +67,7 @@ public class AuthService : IAuthService
         // create refresh token for the user
         var refreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7));
         await _refreshRepository.AddRefreshTokenAsync(refreshToken);
+        _logger.LogInformation("User {UserId} signed in", userInfo.UserId);
         
         
        string accessToken = _tokenService.GenerateToken(userInfo);
@@ -72,6 +79,7 @@ public class AuthService : IAuthService
         var existingRefreshToken = await _refreshRepository.GetRefreshTokenAsync(refreshToken);
         if (existingRefreshToken == null || existingRefreshToken.ExpiresAt < DateTime.UtcNow || existingRefreshToken.RevokedAt != null)
         {
+            _logger.LogWarning("Refresh token rejected");
             throw new ValidationException("Invalid or expired refresh token");
         }
         var user = await _userRepository.GetUserByIdAsync(existingRefreshToken.UserId);
@@ -91,6 +99,7 @@ public class AuthService : IAuthService
         // generate new refresh token
         var newRefreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7));
         await _refreshRepository.AddRefreshTokenAsync(newRefreshToken);
+        _logger.LogInformation("User {UserId} refreshed authentication", userInfo.UserId);
         return new AuthOutput(_tokenService.GenerateToken(userInfo), newRefreshToken.Token);
     }
 

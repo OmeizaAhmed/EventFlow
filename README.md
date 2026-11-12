@@ -67,7 +67,16 @@ EventFlow is a webhook and event delivery platform for reliably publishing event
 
 EventFlow is under active development.
 
+## Logging
+
+The API uses Serilog for console output. Configuration lives under `Serilog` in
+`appsettings.json`; log levels can be overridden per environment. Requests log
+method, path, status and elapsed time. Application services log state changes
+using IDs, while the delivery worker logs attempts, retries and failures.
+Credentials, signing secrets, refresh tokens and event payloads are not logged.
+
 ## Background delivery processing
+
 
 The API host runs a database-backed delivery worker. Event publication saves the
 event and its queued deliveries in the same transaction; the worker polls those

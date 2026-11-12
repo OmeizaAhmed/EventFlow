@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "IjTYMgwbkXY=",
+  "dgSpecHash": "l5JughyR2qk=",
   "success": true,
   "projectFilePath": "C:\\Users\\HP Elitebook 1040 G8\\Dev\\EventFlow\\test\\EventFlow.Tests\\EventFlow.Tests.csproj",
   "expectedPackageFiles": [
@@ -27,7 +27,7 @@
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.identity.core\\10.0.11\\microsoft.extensions.identity.core.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.identity.stores\\10.0.11\\microsoft.extensions.identity.stores.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.logging\\10.0.11\\microsoft.extensions.logging.10.0.11.nupkg.sha512",
-    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\10.0.11\\microsoft.extensions.logging.abstractions.10.0.11.nupkg.sha512",
+    "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\10.0.12\\microsoft.extensions.logging.abstractions.10.0.12.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.options\\10.0.11\\microsoft.extensions.options.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\10.0.11\\microsoft.extensions.options.configurationextensions.10.0.11.nupkg.sha512",
     "C:\\Users\\HP Elitebook 1040 G8\\.nuget\\packages\\microsoft.extensions.primitives\\10.0.11\\microsoft.extensions.primitives.10.0.11.nupkg.sha512",

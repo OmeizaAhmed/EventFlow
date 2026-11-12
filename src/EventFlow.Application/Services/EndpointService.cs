@@ -4,6 +4,8 @@ using System.Text;
 using EventFlow.Application.Interfaces;
 using EventFlow.Application.DTOs;
 using EventFlow.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 
 namespace EventFlow.Application.Services
@@ -14,12 +16,14 @@ namespace EventFlow.Application.Services
         private readonly IEndpointRepository _endpointRepository;
         private readonly IProjectRepository _projectRepository;
         private readonly ISigningKeyService _signingKeyService;
+        private readonly ILogger<EndpointService> _logger;
 
-        public EndpointService(IEndpointRepository endpointRepository, ISigningKeyService signingKeyService, IProjectRepository projectRepository)
+        public EndpointService(IEndpointRepository endpointRepository, ISigningKeyService signingKeyService, IProjectRepository projectRepository, ILogger<EndpointService>? logger = null)
         {
             _endpointRepository = endpointRepository;
             _signingKeyService = signingKeyService;
             _projectRepository = projectRepository; 
+            _logger = logger ?? NullLogger<EndpointService>.Instance;
         }
         public async Task<EndpointCreationOutput> CreateEndpointAsync(CreateEndpointInput input)
         {
@@ -34,6 +38,7 @@ namespace EventFlow.Application.Services
             var project = membership.Project;
             var endpoint = project.RegisterEndpoint(input.Url, encryptedSecret, input.Description);
             await _endpointRepository.CreateEndpointAsync(endpoint);
+            _logger.LogInformation("Endpoint {EndpointId} created in project {ProjectId}", endpoint.EndpointId, endpoint.ProjectId);
 
             return new EndpointCreationOutput(
                 endpoint.EndpointId,
@@ -98,6 +103,7 @@ namespace EventFlow.Application.Services
             endpoint.Update(input.Url, input.Description);
             await _endpointRepository.UpdateEndpointAsync(endpoint);
             await _endpointRepository.SaveChangesAsync();
+            _logger.LogInformation("Endpoint {EndpointId} updated in project {ProjectId}", endpoint.EndpointId, endpoint.ProjectId);
             return new EndpointOutput(
                 endpoint.EndpointId,
                 endpoint.ProjectId,
@@ -124,6 +130,7 @@ namespace EventFlow.Application.Services
                 throw new NotFoundException("Endpoint", endpointId);
             }
             await _endpointRepository.DeleteEndpointAsync(endpointId);
+            _logger.LogInformation("Endpoint {EndpointId} deleted from project {ProjectId}", endpointId, projectId);
         }
 
         public async Task ActivateEndpointAsync(Guid endpointId, Guid projectId, Guid userId)
@@ -144,6 +151,7 @@ namespace EventFlow.Application.Services
             }
             endpoint.Activate();
             await _endpointRepository.UpdateEndpointAsync(endpoint);
+            _logger.LogInformation("Endpoint {EndpointId} activated in project {ProjectId}", endpointId, projectId);
         }
 
         public async Task DeactivateEndpointAsync(Guid endpointId, Guid projectId, Guid userId)
@@ -164,6 +172,7 @@ namespace EventFlow.Application.Services
             }
             endpoint.Deactivate();
             await _endpointRepository.UpdateEndpointAsync(endpoint);
+            _logger.LogInformation("Endpoint {EndpointId} deactivated in project {ProjectId}", endpointId, projectId);
         }
 
         // Additional methods for managing event subscriptions can be added here, following a similar pattern of permission checks and repository interactions.
@@ -182,6 +191,7 @@ namespace EventFlow.Application.Services
             }
             var subscription = endpoint.Subscribe(input.EventType);
             await _endpointRepository.CreateSubscriptionAsync(subscription);
+            _logger.LogInformation("Subscription {SubscriptionId} created for endpoint {EndpointId} in project {ProjectId}", subscription.EventSubscriptionId, endpoint.EndpointId, input.ProjectId);
             return new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt);
         }
 
@@ -225,6 +235,7 @@ namespace EventFlow.Application.Services
             }
             subscription.UpdateEventType(input.EventType);
             await _endpointRepository.UpdateSubscriptionAsync(subscription);
+            _logger.LogInformation("Subscription {SubscriptionId} updated in project {ProjectId}", subscription.EventSubscriptionId, input.ProjectId);
             return new EventSubscriptionOutput(subscription.EventSubscriptionId, subscription.ProjectId, subscription.EndpointId, subscription.EventType, subscription.CreatedAt);
         }
 
@@ -241,6 +252,7 @@ namespace EventFlow.Application.Services
                 throw new NotFoundException("Subscription", subscriptionId);
             }
             await _endpointRepository.DeleteSubscriptionAsync(subscriptionId);
+            _logger.LogInformation("Subscription {SubscriptionId} deleted from project {ProjectId}", subscriptionId, projectId);
         }
             
     }

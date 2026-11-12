@@ -28,6 +28,17 @@ try
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
     var app = builder.Build();
     app.UseMiddleware<GlobalErrorHandler>();
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        options.GetLevel = (context, _, _) => context.Response.StatusCode >= 500
+            ? Serilog.Events.LogEventLevel.Error
+            : context.Response.StatusCode >= 400
+                ? Serilog.Events.LogEventLevel.Warning
+                : Serilog.Events.LogEventLevel.Information;
+        options.EnrichDiagnosticContext = (diagnosticContext, context) =>
+            diagnosticContext.Set("TraceId", context.TraceIdentifier);
+    });
     app.UseHttpsRedirection();
     app.UseAuthentication();
     app.UseAuthorization();
