@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IEndpointRepository, EndpointRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IDeliveryRepository, DeliveryRepository>();
+        services.AddScoped<IDeliveryInspectionRepository, DeliveryInspectionRepository>();
 
         // Services
         services.AddSingleton<IApiKeyService, ApiKeyService>();

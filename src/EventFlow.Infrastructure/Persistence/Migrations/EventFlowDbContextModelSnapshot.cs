@@ -83,6 +83,9 @@ namespace EventFlow.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("NextRetryAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("ReplayOfDeliveryId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 

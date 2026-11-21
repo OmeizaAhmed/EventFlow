@@ -116,8 +116,40 @@ Graceful shutdown cancels active requests; unfinished leases expire for recovery
 Multiple hosts must use synchronized clocks and share access to the same signing
 key protection material. The current DPAPI configuration remains Windows-specific.
 
-Delivery inspection/replay HTTP APIs and UI are still planned. Delivery and attempt
-records can currently be inspected in the database.
+### Delivery inspection and replay API
+
+These endpoints require a user JWT and an active project membership. API keys
+are for event publishing and cannot inspect or replay deliveries.
+
+| Method | Route (under `/api/projects/{projectId}`) | Result |
+| --- | --- | --- |
+| GET | `/deliveries` | Paginated delivery summaries, newest first. |
+| GET | `/deliveries/{deliveryId}` | Summary, original event payload, and current endpoint URL. |
+| GET | `/deliveries/{deliveryId}/attempts` | Paginated attempt history in attempt-number order, including response, error, status code, and duration. |
+| POST | `/deliveries/{deliveryId}/replay` | `202 Accepted`, new queued delivery summary, and a `Location` pointing to its details. |
+
+Lists accept `status` (e.g. `DeadLetter`), `eventId`, and `endpointId` filters.
+Both list routes accept `page` (default 1, maximum 1,000,000) and `pageSize`
+(default 25, maximum 100), returning `items`, `totalCount`, `page`, and `pageSize`.
+For example: `GET /api/projects/{projectId}/deliveries?status=DeadLetter&pageSize=25`.
+Invalid filters or pagination return `400`. Missing deliveries and inaccessible
+projects return `404`; read-only members attempting replay receive `403`.
+
+All active members can inspect. Owners, admins, and developers can replay
+`Delivered`, `Failed`, or `DeadLetter` deliveries when the project and endpoint
+are active. Queued, processing, and retry-scheduled deliveries return `409` to
+avoid duplicating work already in flight. Inactive destinations also return `409`.
+
+Replay preserves the original delivery and attempts, creates a new delivery with
+`replayOfDeliveryId` pointing to the source, and starts a fresh retry budget. It
+reuses the stored event/payload and the same endpoint, using that endpoint's current
+URL and signing key when sent. It does not re-evaluate event subscriptions. Each
+successful replay POST creates a new delivery; repeated POSTs are not idempotent.
+Receivers see the same event ID but a new delivery ID. The normal background worker
+handles replays asynchronously, including retries and dead-lettering.
+
+Apply the `DeliveryReplay` migration using the database update command above
+before running this version. The inspection/replay UI remains planned.
 
 Run the delivery-focused tests:
 

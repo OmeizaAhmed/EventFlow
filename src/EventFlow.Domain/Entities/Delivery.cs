@@ -6,6 +6,7 @@ public class Delivery
 {
     public Guid DeliveryId { get; private set; }
     public Guid EventId { get; private set; }
+    public Guid? ReplayOfDeliveryId { get; private set; }
     public Event Event { get; private set; } = null!;
     public Guid EndpointId { get; private set; }
     public WebhookEndpoint Endpoint { get; private set; } = null!;
@@ -31,6 +32,15 @@ public class Delivery
             Status = DeliveryStatus.Queued,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public Delivery Replay()
+    {
+        if (Status is not (DeliveryStatus.Delivered or DeliveryStatus.Failed or DeliveryStatus.DeadLetter))
+            throw new ConflictException("Only delivered, failed, or dead-letter deliveries can be replayed.");
+        var replay = Create(EventId, EndpointId);
+        replay.ReplayOfDeliveryId = DeliveryId;
+        return replay;
     }
 
     public void RecordAttempt(int? httpStatusCode, string? errorMessage, bool succeeded)

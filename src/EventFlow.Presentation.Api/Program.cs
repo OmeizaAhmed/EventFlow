@@ -7,18 +7,18 @@ using Serilog;
 using EventFlow.Application.Interfaces;
 using EventFlow.Presentation.Api.Services;
 
-Log.Logger = new LoggerConfiguration()
+using var startupLogger = new LoggerConfiguration()
     .WriteTo.Console()
-    .CreateBootstrapLogger();
+    .CreateLogger();
 
 try
 {
-    Log.Information("Starting up");
+    startupLogger.Information("Starting up");
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Services.AddSerilog((services, configuration) => configuration
         .ReadFrom.Configuration(builder.Configuration)
-        .ReadFrom.Services(services));
+        .ReadFrom.Services(services), preserveStaticLogger: true);
 
     builder.Services.AddOpenApi();
     builder.Services.AddControllers();
@@ -60,12 +60,12 @@ try
 // EF Core design-time tools intentionally abort after building the host.
 catch (Exception ex) when (ex is not HostAbortedException)
 {
-    Log.Fatal(ex, "Application start-up failed");
+    startupLogger.Fatal(ex, "Application start-up failed");
+    throw;
 }
 finally
 {
-    Log.Information("Shut down complete");
-    Log.CloseAndFlush();
+    startupLogger.Information("Shut down complete");
 }
 
 // Expose the entry point to the integration test host.

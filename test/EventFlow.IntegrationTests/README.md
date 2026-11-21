@@ -18,6 +18,10 @@ reload records in fresh scopes. The database is discarded when the test ends.
 No Docker, PostgreSQL instance, development database, or local secrets are needed.
 Test JWT settings override application configuration.
 
+API-key authentication checks use a controller registered only by the test factory.
+It exposes the authenticated claims for live and test keys while exercising the
+real authentication handler; no diagnostic route is added to the production API.
+
 The 77 cases cover:
 
 - Authenticated creation, persisted owner membership, and the Location header.

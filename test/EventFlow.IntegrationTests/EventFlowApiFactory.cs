@@ -30,7 +30,7 @@ public sealed class EventFlowApiFactory : WebApplicationFactory<Program>
                 ["JwtSettings:SecretKey"] = JwtSecret,
                 ["JwtSettings:Issuer"] = JwtIssuer,
                 ["JwtSettings:Audience"] = JwtAudience,
-                ["JwtSettings:ExpirationInMinutes"] = "60",
+                ["JwtSettings:ExpiresInMinutes"] = "60",
                 ["DeliveryProcessing:Enabled"] = "false",
                 ["ConnectionStrings:DefaultConnection"] = "Unused: replaced by the test SQLite connection",
                 ["Serilog:MinimumLevel:Default"] = "Warning"
@@ -38,6 +38,7 @@ public sealed class EventFlowApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            services.AddControllers().AddApplicationPart(typeof(ApiKeyProbeController).Assembly);
             // Remove the provider configuration as well as the options to prevent
             // both Npgsql and SQLite from being registered on the same context.
             services.RemoveAll<DbContextOptions<EventFlowDbContext>>();
