@@ -8,6 +8,12 @@ namespace EventFlow.Application.Interfaces;
 /// </summary>
 public interface IDeliveryRepository
 {
+    Task<Delivery?> ClaimAsync(
+        Guid deliveryId,
+        DateTime utcNow,
+        TimeSpan leaseDuration,
+        CancellationToken ct = default);
+
     Task<Delivery?> ClaimNextAsync(
         DateTime utcNow,
         TimeSpan leaseDuration,

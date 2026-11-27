@@ -28,7 +28,7 @@ EventFlow is a webhook and event delivery platform for reliably publishing event
 - ASP.NET Core Identity
 - JWT authentication with refresh tokens
 - Redis
-- Hangfire
+- Hangfire with PostgreSQL storage for background webhook delivery
 - Serilog
 - FluentValidation
 - xUnit and integration tests
@@ -60,12 +60,28 @@ EventFlow is a webhook and event delivery platform for reliably publishing event
 3. Publish an event through the API.
 4. EventFlow queues deliveries for matching subscriptions.
 5. Delivery attempts are signed and sent asynchronously.
-6. Failed attempts are retried automatically.
-7. Events that exhaust their retry policy are available in the dead-letter queue for inspection or replay.
+6. Temporary failures are retried automatically within the retry policy.
+7. Each delivery ends as `Delivered` on success or `DeadLetter` after a permanent failure or exhausted retries. Dead-lettered deliveries are available for inspection and replay.
 
 ## Status
 
 EventFlow is under active development.
+
+### Next milestone: Delivery dashboard
+
+The delivery inspection and replay API is available. The next milestone is to
+expose that workflow in the React client using the existing API.
+
+1. Sign in and select a project.
+2. List deliveries with their event type, endpoint, status, attempt count, and
+   next retry time. Filter by `DeadLetter` to find failed deliveries.
+3. Inspect the HTTP status, response, and error for each attempt. Let authorized
+   users replay an eligible delivery and open the newly queued delivery.
+
+To verify the workflow, publish an event to a test endpoint that returns HTTP
+`400`. Find the delivery in `DeadLetter`, fix the endpoint, and replay from
+the dashboard. The new delivery should become `Delivered`, and the original
+failure history should still be visible.
 
 ## Logging
 
@@ -78,9 +94,16 @@ Credentials, signing secrets, refresh tokens and event payloads are not logged.
 ## Background delivery processing
 
 
-The API host runs a database-backed delivery worker. Event publication saves the
-event and its queued deliveries in the same transaction; the worker polls those
-records directly, so no separate broker or enqueue operation is required.
+The API host runs a Hangfire server backed by PostgreSQL. Event publication saves
+the event and its queued deliveries in the same transaction. After a delivery or
+replay is committed, EventFlow enqueues a Hangfire job for its delivery ID.
+Hangfire schedules retry jobs after EventFlow saves the next attempt time. A
+recurring job scans for due deliveries and expired leases every minute, up to
+100 deliveries per run, so work also resumes after a missed enqueue or restart.
+
+Hangfire uses `ConnectionStrings:DefaultConnection` and manages tables in its own
+`hangfire` schema. The database role needs permission to create or upgrade that
+schema on startup.
 
 Apply the migrations before starting the updated API:
 
@@ -94,8 +117,8 @@ dotnet run --project src/EventFlow.Presentation.Api
 | Setting | Default | Behavior |
 | --- | --- | --- |
 | `Enabled` | `true` | Set to `false` to accept events without running background sends in this host. |
-| `WorkerCount` | `4` | Concurrent processing loops per API instance, each with its own database scope. |
-| `PollInterval` | `00:00:02` | Wait after an empty queue or an infrastructure error. |
+| `WorkerCount` | `4` | Concurrent Hangfire workers per API instance. |
+| `PollInterval` | `00:00:02` | Hangfire queue polling interval. Checks for scheduled jobs use this interval, capped at one minute. |
 | `LeaseDuration` | `00:01:00` | Interrupted work becomes claimable after this interval. Must exceed `WebhookSender:Timeout` by more than ten seconds. |
 | `MaxAttempts` | `5` | Total completed attempts, including the first send. |
 | `InitialRetryDelay` | `00:00:30` | Initial exponential-backoff ceiling; jitter selects between half and the full ceiling. |
@@ -149,13 +172,10 @@ Receivers see the same event ID but a new delivery ID. The normal background wor
 handles replays asynchronously, including retries and dead-lettering.
 
 Apply the `DeliveryReplay` migration using the database update command above
-before running this version. The inspection/replay UI remains planned.
+before running this version.
 
-Run the delivery-focused tests:
-
-```powershell
-dotnet test EventFlow.slnx --filter "FullyQualifiedName~DeliveryProcessorTests|FullyQualifiedName~DeliveryWorkerTests|FullyQualifiedName~DeliveryProcessingTests"
-```
+See the [webhook delivery test guide](DELIVERY_TEST_GUIDE.md) for the automated
+suite and a manual walkthrough with a local HTTPS receiver.
 
 
 dotnet ef migrations add InitialCreate --project EventFlow.Infrastructure --startup-project EventFlow.Presentation.Api --output-dir EventFlow.Infrastructure/Persistence/Migrations

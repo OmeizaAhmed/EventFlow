@@ -10,6 +10,9 @@ using EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Services;
+using Hangfire;
+using Hangfire.Common;
+using Hangfire.States;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -29,6 +32,7 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
     private readonly WebApplicationFactory<Program> _factory;
     private readonly ManualTimeProvider _time = new();
     private readonly RecordingHandler _handler = new();
+    private readonly RecordingJobClient _jobs = new();
     private readonly HttpClient _webhookClient;
     private readonly string? _postgresAdminConnectionString;
     private readonly string? _postgresDatabaseName;
@@ -57,6 +61,8 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
             }
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(_time);
+            services.AddSingleton(provider => new DeliveryJobScheduler(() => _jobs,
+                provider.GetRequiredService<ILogger<DeliveryJobScheduler>>()));
             services.Configure<DeliveryProcessingOptions>(options => options.MaxAttempts = 3);
             services.RemoveAll<IWebhookSender>();
             services.AddScoped<IWebhookSender>(provider => new WebhookSender(
@@ -138,7 +144,11 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
         Assert.Empty(queued.Attempts);
         Assert.Empty(_handler.Requests);
 
-        Assert.True(await ProcessNextAsync());
+        var publishJob = Assert.Single(_jobs.Created);
+        Assert.Equal(nameof(DeliveryJobs.SendAsync), publishJob.Job.Method.Name);
+        Assert.Equal(queued.DeliveryId, Assert.IsType<Guid>(publishJob.Job.Args[0]));
+        Assert.IsType<EnqueuedState>(publishJob.State);
+        await SendJobAsync(queued.DeliveryId);
 
         var completed = await ReadDeliveryAsync();
         Assert.Equal(DeliveryStatus.Delivered, completed.Status);
@@ -267,24 +277,30 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
     public async Task RetryableFailure_WaitsUntilDueThenPreservesHistoryOnSuccess()
     {
         await SeedAsync();
+        _time.Advance(TimeSpan.FromMilliseconds(237));
         _handler.Enqueue(HttpStatusCode.ServiceUnavailable, "try later", TimeSpan.FromMinutes(2));
         _handler.Enqueue(HttpStatusCode.OK, "received");
 
-        Assert.True(await ProcessNextAsync());
+        var deliveryId = (await ReadDeliveryAsync()).DeliveryId;
+        await SendJobAsync(deliveryId);
         var failed = await ReadDeliveryAsync();
         Assert.Equal(DeliveryStatus.RetryScheduled, failed.Status);
         Assert.NotNull(failed.NextRetryAt);
         Assert.True(failed.NextRetryAt > _time.GetUtcNow().UtcDateTime);
         Assert.False(Assert.Single(failed.Attempts).Succeeded);
         Assert.Equal(503, Assert.Single(failed.Attempts).HttpStatusCode);
-        Assert.False(await ProcessNextAsync());
+        var retryJob = Assert.Single(_jobs.Created.Skip(1));
+        Assert.Equal(deliveryId, Assert.IsType<Guid>(retryJob.Job.Args[0]));
+        Assert.Equal(failed.NextRetryAt.Value.AddMilliseconds(763),
+            Assert.IsType<ScheduledState>(retryJob.State).EnqueueAt);
+        await SendJobAsync(deliveryId);
         _time.SetUtcNow(new DateTimeOffset(DateTime.SpecifyKind(failed.NextRetryAt.Value, DateTimeKind.Utc))
             .AddMilliseconds(-1));
-        Assert.False(await ProcessNextAsync());
+        await SendJobAsync(deliveryId);
         Assert.Single(_handler.Requests);
 
         _time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.True(await ProcessNextAsync());
+        await SendJobAsync(deliveryId);
 
         var completed = await ReadDeliveryAsync();
         Assert.Equal(DeliveryStatus.Delivered, completed.Status);
@@ -306,6 +322,39 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
                 Assert.Equal("received", second.ResponseBody);
             });
         Assert.Equal(2, _handler.Requests.Count);
+        Assert.Equal(2, _jobs.Created.Count);
+    }
+
+    [Fact]
+    public async Task Recovery_EnqueuesCommittedDeliveryAfterEnqueueFailureAndExpiredLease()
+    {
+        _jobs.FailEnqueue = true;
+        await SeedAsync();
+        var deliveryId = (await ReadDeliveryAsync()).DeliveryId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<IDeliveryRepository>();
+            Assert.NotNull(await repository.ClaimAsync(deliveryId, _time.GetUtcNow().UtcDateTime,
+                TimeSpan.FromMinutes(1)));
+        }
+
+        _jobs.FailEnqueue = false;
+        _time.Advance(TimeSpan.FromMinutes(1));
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<DeliveryJobs>().RecoverAsync(CancellationToken.None);
+        }
+
+        var recoveryJob = Assert.Single(_jobs.Created);
+        Assert.Equal(deliveryId, Assert.IsType<Guid>(recoveryJob.Job.Args[0]));
+        Assert.IsType<EnqueuedState>(recoveryJob.State);
+        await SendJobAsync(deliveryId);
+        await SendJobAsync(deliveryId);
+
+        var completed = await ReadDeliveryAsync();
+        Assert.Equal(DeliveryStatus.Delivered, completed.Status);
+        Assert.Single(completed.Attempts);
+        Assert.Single(_handler.Requests);
     }
 
     [Fact]
@@ -423,6 +472,12 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
         return await scope.ServiceProvider.GetRequiredService<IDeliveryProcessor>().ProcessNextAsync();
     }
 
+    private async Task SendJobAsync(Guid deliveryId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<DeliveryJobs>().SendAsync(deliveryId, CancellationToken.None);
+    }
+
     private async Task<Delivery> ReadDeliveryAsync()
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -431,6 +486,24 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
     }
 
     private sealed record SeededDestination(Guid ProjectId, Guid EndpointId, string Secret, string ApiKey);
+
+    private sealed class RecordingJobClient : IBackgroundJobClient
+    {
+        public List<(Job Job, IState State)> Created { get; } = [];
+        public bool FailEnqueue { get; set; }
+
+        public string Create(Job job, IState state)
+        {
+            if (FailEnqueue)
+                throw new InvalidOperationException("Job storage is unavailable.");
+
+            Created.Add((job, state));
+            return Created.Count.ToString(CultureInfo.InvariantCulture);
+        }
+
+        public bool ChangeState(string jobId, IState state, string expectedState) =>
+            throw new NotSupportedException();
+    }
 
     private sealed class ManualTimeProvider : TimeProvider
     {

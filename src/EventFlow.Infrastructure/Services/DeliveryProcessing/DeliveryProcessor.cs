@@ -1,5 +1,6 @@
 using EventFlow.Application.DTOs;
 using EventFlow.Application.Interfaces;
+using EventFlow.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -20,6 +21,22 @@ public sealed class DeliveryProcessor(
             time.GetUtcNow().UtcDateTime, settings.LeaseDuration, cancellationToken);
         if (delivery is null) return false;
 
+        await SendClaimedAsync(delivery, settings, cancellationToken);
+        return true;
+    }
+
+    public async Task<DateTime?> ProcessAsync(Guid deliveryId, CancellationToken cancellationToken)
+    {
+        var settings = options.Value;
+        var delivery = await repository.ClaimAsync(
+            deliveryId, time.GetUtcNow().UtcDateTime, settings.LeaseDuration, cancellationToken);
+
+        return delivery is null ? null : await SendClaimedAsync(delivery, settings, cancellationToken);
+    }
+
+    private async Task<DateTime?> SendClaimedAsync(Delivery delivery, DeliveryProcessingOptions settings,
+        CancellationToken cancellationToken)
+    {
         var leaseToken = delivery.LeaseToken
             ?? throw new InvalidOperationException("A claimed delivery must have a lease token.");
 
@@ -30,7 +47,7 @@ public sealed class DeliveryProcessor(
         if (remaining <= TimeSpan.Zero)
         {
             logger.LogWarning("Delivery {DeliveryId} lease elapsed before sending", delivery.DeliveryId);
-            return true;
+            return null;
         }
 
         using var deadline = new CancellationTokenSource(remaining, time);
@@ -88,12 +105,12 @@ public sealed class DeliveryProcessor(
         {
             logger.LogWarning("Delivery {DeliveryId} outcome discarded because its lease was replaced",
                 delivery.DeliveryId);
-            return true;
+            return null;
         }
 
         logger.LogInformation("Delivery {DeliveryId} attempt {AttemptNumber} finished as {Status}; next retry {NextRetryAt}",
             delivery.DeliveryId, delivery.AttemptCount, delivery.Status, delivery.NextRetryAt);
-        return true;
+        return delivery.NextRetryAt;
     }
 
     private static TimeSpan RetryDelay(int attemptCount, TimeSpan? retryAfter, DeliveryProcessingOptions settings)

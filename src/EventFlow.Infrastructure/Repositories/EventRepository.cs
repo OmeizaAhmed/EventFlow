@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
+using EventFlow.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventFlow.Infrastructure.Repositories;
@@ -12,10 +13,12 @@ namespace EventFlow.Infrastructure.Repositories;
 public class EventRepository : IEventRepository
 {
     private readonly EventFlowDbContext _context;
+    private readonly DeliveryJobScheduler? _deliveryJobs;
 
-    public EventRepository(EventFlowDbContext context)
+    public EventRepository(EventFlowDbContext context, DeliveryJobScheduler? deliveryJobs = null)
     {
         _context = context;
+        _deliveryJobs = deliveryJobs;
     }
     public Event AddEvent(Event evt)
     {
@@ -91,6 +94,14 @@ public class EventRepository : IEventRepository
 
     public async Task SaveChangesAsync()
     {
+        var queuedDeliveries = _deliveryJobs is null ? [] : _context.ChangeTracker.Entries<Delivery>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity.DeliveryId)
+            .ToArray();
+
         await _context.SaveChangesAsync();
+
+        foreach (var deliveryId in queuedDeliveries)
+            _deliveryJobs?.EnqueueCommitted(deliveryId);
     }
 }

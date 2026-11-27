@@ -5,6 +5,8 @@ using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Repositories;
 using EventFlow.Infrastructure.Services;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +16,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
@@ -62,7 +66,8 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IEndpointRepository, EndpointRepository>();
         services.AddScoped<IEventRepository, EventRepository>();
-        services.AddScoped<IDeliveryRepository, DeliveryRepository>();
+        services.AddScoped<DeliveryRepository>();
+        services.AddScoped<IDeliveryRepository>(provider => provider.GetRequiredService<DeliveryRepository>());
         services.AddScoped<IDeliveryInspectionRepository, DeliveryInspectionRepository>();
 
         // Services
@@ -110,8 +115,28 @@ public static class DependencyInjection
                 options.MaxRetryDelay >= options.InitialRetryDelay && options.MaxRetryDelay <= TimeSpan.FromDays(30),
                 "DeliveryProcessing retry delays must be positive, ordered, and at most thirty days.")
             .ValidateOnStart();
-        services.AddScoped<IDeliveryProcessor, DeliveryProcessor>();
-        services.AddHostedService<DeliveryWorker>();
+        services.AddScoped<DeliveryProcessor>();
+        services.AddScoped<IDeliveryProcessor>(provider => provider.GetRequiredService<DeliveryProcessor>());
+
+        services.AddHangfire((provider, hangfire) =>
+        {
+            var settings = provider.GetRequiredService<IOptions<DeliveryProcessingOptions>>().Value;
+            var connectionString = provider.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required for Hangfire.");
+
+            hangfire.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UsePostgreSqlStorage(storage => storage.UseNpgsqlConnection(connectionString),
+                    new PostgreSqlStorageOptions { QueuePollInterval = settings.PollInterval });
+        });
+        services.AddSingleton(provider => new DeliveryJobScheduler(
+            () => provider.GetRequiredService<IOptions<DeliveryProcessingOptions>>().Value.Enabled
+                ? provider.GetRequiredService<IBackgroundJobClient>()
+                : null,
+            provider.GetRequiredService<ILogger<DeliveryJobScheduler>>()));
+        services.AddScoped<DeliveryJobs>();
+        services.AddHostedService<DeliveryJobHost>();
         
 
         // Authentication and Authorization

@@ -2,11 +2,14 @@ using EventFlow.Application.DTOs;
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
+using EventFlow.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventFlow.Infrastructure.Repositories;
 
-public sealed class DeliveryInspectionRepository(EventFlowDbContext context) : IDeliveryInspectionRepository
+public sealed class DeliveryInspectionRepository(
+    EventFlowDbContext context,
+    DeliveryJobScheduler? deliveryJobs = null) : IDeliveryInspectionRepository
 {
     public async Task<DeliveryPage<DeliverySummary>> ListAsync(Guid projectId, DeliveryQuery query, CancellationToken ct)
     {
@@ -42,5 +45,6 @@ public sealed class DeliveryInspectionRepository(EventFlowDbContext context) : I
     {
         context.Deliveries.Add(delivery);
         await context.SaveChangesAsync(ct);
+        deliveryJobs?.EnqueueCommitted(delivery.DeliveryId);
     }
 }

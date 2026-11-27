@@ -23,37 +23,52 @@ public sealed class DeliveryRepository(EventFlowDbContext context) : IDeliveryRe
         if (leaseDuration <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(leaseDuration));
 
-        var leaseExpiresAt = utcNow.Add(leaseDuration);
-        var candidateIds = await EligibleDeliveries(utcNow)
-            .OrderBy(d => d.CreatedAt)
-            .ThenBy(d => d.DeliveryId)
-            .Select(d => d.DeliveryId)
-            .Take(CandidateBatchSize)
-            .ToListAsync(ct);
+        var candidateIds = await ListDueIdsAsync(utcNow, CandidateBatchSize, ct);
 
         foreach (var deliveryId in candidateIds)
         {
-            var leaseToken = Guid.NewGuid();
-            // Recheck eligibility in the UPDATE so only one racing worker wins.
-            var claimed = await EligibleDeliveries(utcNow)
-                .Where(d => d.DeliveryId == deliveryId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(d => d.Status, DeliveryStatus.Processing)
-                    .SetProperty(d => d.LeaseToken, (Guid?)leaseToken)
-                    .SetProperty(d => d.LeaseExpiresAt, (DateTime?)leaseExpiresAt), ct);
-
-            if (claimed == 0)
-                continue;
-
-            return await context.Deliveries
-                .AsTracking()
-                .Include(d => d.Event).ThenInclude(e => e.Project)
-                .Include(d => d.Endpoint)
-                .Include(d => d.Attempts)
-                .SingleOrDefaultAsync(d => d.DeliveryId == deliveryId && d.LeaseToken == leaseToken, ct);
+            var delivery = await ClaimAsync(deliveryId, utcNow, leaseDuration, ct);
+            if (delivery is not null)
+                return delivery;
         }
 
         return null;
+    }
+
+    public Task<List<Guid>> ListDueIdsAsync(DateTime utcNow, int limit, CancellationToken ct) =>
+        EligibleDeliveries(utcNow)
+            .OrderBy(d => d.CreatedAt)
+            .ThenBy(d => d.DeliveryId)
+            .Select(d => d.DeliveryId)
+            .Take(limit)
+            .ToListAsync(ct);
+
+    public async Task<Delivery?> ClaimAsync(Guid deliveryId, DateTime utcNow, TimeSpan leaseDuration,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (leaseDuration <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(leaseDuration));
+
+        var leaseToken = Guid.NewGuid();
+        var leaseExpiresAt = utcNow.Add(leaseDuration);
+        // The conditional UPDATE lets only one job claim an eligible delivery.
+        var claimed = await EligibleDeliveries(utcNow)
+            .Where(d => d.DeliveryId == deliveryId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(d => d.Status, DeliveryStatus.Processing)
+                .SetProperty(d => d.LeaseToken, (Guid?)leaseToken)
+                .SetProperty(d => d.LeaseExpiresAt, (DateTime?)leaseExpiresAt), ct);
+
+        if (claimed == 0)
+            return null;
+
+        return await context.Deliveries
+            .AsTracking()
+            .Include(d => d.Event).ThenInclude(e => e.Project)
+            .Include(d => d.Endpoint)
+            .Include(d => d.Attempts)
+            .SingleOrDefaultAsync(d => d.DeliveryId == deliveryId && d.LeaseToken == leaseToken, ct);
     }
 
     public async Task<bool> SaveClaimedAsync(

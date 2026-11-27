@@ -266,6 +266,11 @@ public class DeliveryProcessorTests
         public DateTime? LastClaimAt { get; private set; }
         public TimeSpan? LastLeaseDuration { get; private set; }
 
+        public Task<Delivery?> ClaimAsync(Guid deliveryId, DateTime now, TimeSpan leaseDuration, CancellationToken ct = default) =>
+            delivery?.DeliveryId == deliveryId
+                ? ClaimNextAsync(now, leaseDuration, ct)
+                : Task.FromResult<Delivery?>(null);
+
         public Task<Delivery?> ClaimNextAsync(DateTime now, TimeSpan leaseDuration, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
