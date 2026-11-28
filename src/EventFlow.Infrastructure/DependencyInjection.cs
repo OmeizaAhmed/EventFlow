@@ -1,4 +1,5 @@
 using EventFlow.Application.Interfaces;
+using EventFlow.Application.Notifications;
 using EventFlow.Domain.Interfaces;
 using EventFlow.Infrastructure.Authentication;
 using EventFlow.Infrastructure.Identity;
@@ -117,6 +118,23 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddScoped<DeliveryProcessor>();
         services.AddScoped<IDeliveryProcessor>(provider => provider.GetRequiredService<DeliveryProcessor>());
+
+        services.AddOptions<NotificationOptions>()
+            .Bind(configuration.GetSection(NotificationOptions.SectionName))
+            .Validate(options => !options.Enabled ||
+                (options.Smtp is { } smtp &&
+                 !string.IsNullOrWhiteSpace(smtp.Host) &&
+                 smtp.Port is >= 1 and <= 65535 &&
+                 MimeKit.MailboxAddress.TryParse(smtp.FromAddress, out _) &&
+                 (string.IsNullOrWhiteSpace(smtp.Username) == string.IsNullOrWhiteSpace(smtp.Password))),
+                "Enabled notifications require an SMTP host, valid port and sender address, and paired credentials when authenticating.")
+            .ValidateOnStart();
+        services.AddScoped<NotificationOutbox>();
+        services.AddScoped<INotificationPublisher>(provider => provider.GetRequiredService<NotificationOutbox>());
+        services.AddScoped<NotificationJobs>();
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        services.AddNotificationHandler<DeliveryFailedNotification, DeliveryFailureEmailHandler>();
+        services.AddNotificationHandler<ProjectInvitationCreated, ProjectInvitationEmailHandler>();
 
         services.AddHangfire((provider, hangfire) =>
         {

@@ -154,6 +154,22 @@
           }
         }
       },
+      "MailKit/5.0.0": {
+        "type": "package",
+        "dependencies": {
+          "MimeKit.Core": "5.0.0"
+        },
+        "compile": {
+          "lib/net10.0/MailKit.dll": {
+            "related": ".dll.config;.pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/MailKit.dll": {
+            "related": ".dll.config;.pdb;.xml"
+          }
+        }
+      },
       "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.11": {
         "type": "package",
         "dependencies": {
@@ -1468,6 +1484,19 @@
           "build/net8.0/Microsoft.TestPlatform.TestHost.targets": {}
         }
       },
+      "MimeKit.Core/5.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net10.0/MimeKit.Core.dll": {
+            "related": ".dll.config;.pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/MimeKit.Core.dll": {
+            "related": ".dll.config;.pdb;.xml"
+          }
+        }
+      },
       "Newtonsoft.Json/13.0.4": {
         "type": "package",
         "compile": {
@@ -1999,6 +2028,7 @@
           "EventFlow.Domain": "1.0.0",
           "Hangfire.AspNetCore": "1.8.25",
           "Hangfire.PostgreSql": "1.21.1",
+          "MailKit": "5.0.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.11",
           "Newtonsoft.Json": "13.0.4",
@@ -2304,6 +2334,47 @@
         "hangfire.postgresql.nuspec",
         "lib/netstandard2.0/Hangfire.PostgreSql.dll",
         "lib/netstandard2.0/Hangfire.PostgreSql.xml"
+      ]
+    },
+    "MailKit/5.0.0": {
+      "sha512": "PG6hnsklTzd/iK9A6j03OxDOas9mh8zOBkbPzcsLmFOODE8Hw3HTy7HAKiJvVHXNpKc3/KMVG/4QvOAKCBbGhA==",
+      "type": "package",
+      "path": "mailkit/5.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "docs/ExchangeOAuth2.md",
+        "docs/FAQ.md",
+        "docs/GMailOAuth2.md",
+        "docs/PortingGuide.md",
+        "docs/README.md",
+        "icons/mailkit-50.png",
+        "lib/net10.0/MailKit.dll",
+        "lib/net10.0/MailKit.dll.config",
+        "lib/net10.0/MailKit.pdb",
+        "lib/net10.0/MailKit.xml",
+        "lib/net462/MailKit.dll",
+        "lib/net462/MailKit.pdb",
+        "lib/net462/MailKit.xml",
+        "lib/net47/MailKit.dll",
+        "lib/net47/MailKit.pdb",
+        "lib/net47/MailKit.xml",
+        "lib/net48/MailKit.dll",
+        "lib/net48/MailKit.pdb",
+        "lib/net48/MailKit.xml",
+        "lib/net8.0/MailKit.dll",
+        "lib/net8.0/MailKit.dll.config",
+        "lib/net8.0/MailKit.pdb",
+        "lib/net8.0/MailKit.xml",
+        "lib/netstandard2.0/MailKit.dll",
+        "lib/netstandard2.0/MailKit.pdb",
+        "lib/netstandard2.0/MailKit.xml",
+        "lib/netstandard2.1/MailKit.dll",
+        "lib/netstandard2.1/MailKit.dll.config",
+        "lib/netstandard2.1/MailKit.pdb",
+        "lib/netstandard2.1/MailKit.xml",
+        "mailkit.5.0.0.nupkg.sha512",
+        "mailkit.nuspec"
       ]
     },
     "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.11": {
@@ -3995,6 +4066,44 @@
         "lib/net8.0/zh-Hant/Microsoft.VisualStudio.TestPlatform.Common.resources.dll",
         "microsoft.testplatform.testhost.17.14.1.nupkg.sha512",
         "microsoft.testplatform.testhost.nuspec"
+      ]
+    },
+    "MimeKit.Core/5.0.0": {
+      "sha512": "0RLaVyex/BjUGqiw9xtGwzyCMaBcsu33Rth61bDCeVeQaaQK7tjcy4TA+nHKTqwUdp4OGd+gnhuq2fuR+c20qA==",
+      "type": "package",
+      "path": "mimekit.core/5.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "docs/FAQ.md",
+        "docs/README.md",
+        "icons/mimekit-50.png",
+        "lib/net10.0/MimeKit.Core.dll",
+        "lib/net10.0/MimeKit.Core.dll.config",
+        "lib/net10.0/MimeKit.Core.pdb",
+        "lib/net10.0/MimeKit.Core.xml",
+        "lib/net462/MimeKit.Core.dll",
+        "lib/net462/MimeKit.Core.pdb",
+        "lib/net462/MimeKit.Core.xml",
+        "lib/net47/MimeKit.Core.dll",
+        "lib/net47/MimeKit.Core.pdb",
+        "lib/net47/MimeKit.Core.xml",
+        "lib/net48/MimeKit.Core.dll",
+        "lib/net48/MimeKit.Core.pdb",
+        "lib/net48/MimeKit.Core.xml",
+        "lib/net8.0/MimeKit.Core.dll",
+        "lib/net8.0/MimeKit.Core.dll.config",
+        "lib/net8.0/MimeKit.Core.pdb",
+        "lib/net8.0/MimeKit.Core.xml",
+        "lib/netstandard2.0/MimeKit.Core.dll",
+        "lib/netstandard2.0/MimeKit.Core.pdb",
+        "lib/netstandard2.0/MimeKit.Core.xml",
+        "lib/netstandard2.1/MimeKit.Core.dll",
+        "lib/netstandard2.1/MimeKit.Core.dll.config",
+        "lib/netstandard2.1/MimeKit.Core.pdb",
+        "lib/netstandard2.1/MimeKit.Core.xml",
+        "mimekit.core.5.0.0.nupkg.sha512",
+        "mimekit.core.nuspec"
       ]
     },
     "Newtonsoft.Json/13.0.4": {

@@ -1,4 +1,10 @@
+import AcceptInvitation from './pages/acceptInvitation'
+
 export default function App() {
+  if (window.location.pathname === '/invitations/accept') {
+    return <AcceptInvitation invitationId={new URLSearchParams(window.location.search).get('id')} />
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-bold underline text-blue-600">

@@ -3,6 +3,7 @@ public class RefreshToken
 {
     public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
+    public Guid? SessionId { get; private set; }
     public DomainUser User { get; private set; } = null!;
     public string Token { get; private set; } = string.Empty;
     public DateTime ExpiresAt { get; private set; }
@@ -12,7 +13,7 @@ public class RefreshToken
 
     private RefreshToken() { }
 
-    public static RefreshToken Create(Guid userId, string token, DateTime expiresAt)
+    public static RefreshToken Create(Guid userId, string token, DateTime expiresAt, Guid? sessionId = null)
     {
         if (userId == Guid.Empty)
         {
@@ -28,10 +29,12 @@ public class RefreshToken
         {
             throw new ArgumentException("ExpiresAt must be in the future.", nameof(expiresAt));
         }
-       return new RefreshToken
+        var id = Guid.NewGuid();
+        return new RefreshToken
         {
-            Id = Guid.NewGuid(),
+            Id = id,
             UserId = userId,
+            SessionId = sessionId ?? id,
             Token = token,
             ExpiresAt = expiresAt,
             CreatedAt = DateTime.UtcNow,

@@ -33,6 +33,7 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         await AssertStatusAsync(HttpStatusCode.Created, response);
         var project = await ReadAsync<ProjectResponse>(response);
         Assert.NotEqual(Guid.Empty, project.ProjectId);
+        Assert.True(project.IsActive);
         Assert.Equal("Customer events", project.Name);
         Assert.Equal("Owner", project.Role);
         Assert.InRange(project.CreatedAt, before, DateTime.UtcNow);
@@ -391,6 +392,8 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         var owner = await RegisterAndLoginAsync();
         var project = await CreateProjectAsync(owner.Client);
         await DeactivateAsync(owner.Client, project.ProjectId);
+        var listed = await owner.Client.GetFromJsonAsync<ProjectResponse[]>("/api/projects");
+        Assert.False(Assert.Single(listed!).IsActive);
         var actor = owner;
         if (role == ProjectMembershipRole.Admin)
         {
@@ -403,6 +406,8 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         await AssertStatusAsync(HttpStatusCode.NoContent, response);
         Assert.Empty(await response.Content.ReadAsStringAsync());
         Assert.True((await LoadProjectAsync(project.ProjectId)).IsActive);
+        var current = await actor.Client.GetFromJsonAsync<ProjectResponse>($"/api/projects/{project.ProjectId}");
+        Assert.True(current!.IsActive);
     }
 
     [Theory]
@@ -456,7 +461,7 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EventFlowDbContext>();
         var user = await db.DomainUsers.AsNoTracking().SingleAsync(u => u.Email == email);
-        return new AuthenticatedUser(client, user.UserId);
+        return new AuthenticatedUser(client, user.UserId, email);
     }
 
     private static async Task<ProjectResponse> CreateProjectAsync(HttpClient client, string name = "Original project")
@@ -479,7 +484,7 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         _ => throw new ArgumentOutOfRangeException(nameof(operation))
     };
 
-    // Invitations have no HTTP endpoint yet; only this prerequisite is seeded directly.
+    // Seed memberships for tests exercising other endpoints.
     private Task AddMembershipAsync(Guid projectId, Guid ownerId, Guid memberId, ProjectMembershipRole role) =>
         WithDatabaseAsync(async db =>
         {
@@ -540,7 +545,7 @@ public sealed partial class ProjectApiTests : IAsyncLifetime
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private sealed record AuthenticatedUser(HttpClient Client, Guid UserId);
+    private sealed record AuthenticatedUser(HttpClient Client, Guid UserId, string Email);
     private sealed record LoginResponse(string Token);
     private sealed record ErrorResponse(string Error);
 }

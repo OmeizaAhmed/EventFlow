@@ -21,22 +21,50 @@ public class RefreshRepository : IRefreshRepository
 
     public async Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken)
     {
-        var token = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-        return token;
+        return await _context.RefreshTokens.AsNoTracking().SingleOrDefaultAsync(rt => rt.Token == refreshToken);
     }
 
-    public async Task DeleteRefreshTokenAsync(string refreshToken)
+    public async Task<bool> RotateRefreshTokenAsync(RefreshToken current, RefreshToken replacement)
     {
-        var token = await _context.RefreshTokens.FindAsync(refreshToken);
-        if (token != null)
-        {
-            _context.RefreshTokens.Remove(token);
-        }
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await LockUserAsync(current.UserId);
+
+        var now = DateTime.UtcNow;
+        var consumed = await _context.RefreshTokens
+            .Where(token => token.Id == current.Id && token.RevokedAt == null && token.ExpiresAt > now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(token => token.LastUsedAt, now)
+                .SetProperty(token => token.RevokedAt, (DateTime?)now));
+        if (consumed == 0)
+            return false;
+
+        _context.RefreshTokens.Add(replacement);
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return true;
     }
 
-    public Task SaveChangesAsync()
+    public async Task RevokeRefreshSessionAsync(string refreshToken)
     {
-        return _context.SaveChangesAsync();
+        var presented = await GetRefreshTokenAsync(refreshToken);
+        if (presented is null)
+            return;
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await LockUserAsync(presented.UserId);
+        var now = DateTime.UtcNow;
+        if (presented.ExpiresAt > now)
+        {
+            var sessionId = presented.SessionId ?? presented.Id;
+            await _context.RefreshTokens.Where(token => token.UserId == presented.UserId &&
+                    (token.SessionId == sessionId || token.Id == sessionId) && token.RevokedAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.RevokedAt, (DateTime?)now));
+        }
+        await transaction.CommitAsync();
     }
+
+    // Rotation and logout for the same user share this lock, including legacy tokens without a session ID.
+    private Task<int> LockUserAsync(Guid userId) =>
+        _context.DomainUsers.Where(user => user.UserId == userId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.CreatedAt, user => user.CreatedAt));
 }

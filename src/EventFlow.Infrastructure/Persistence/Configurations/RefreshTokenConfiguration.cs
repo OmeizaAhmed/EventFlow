@@ -12,6 +12,7 @@ namespace EventFlow.Infrastructure.Persistence.Configurations
             builder.Property(rt => rt.UserId).IsRequired();
             builder.Property(rt => rt.Token).IsRequired();
             builder.HasIndex(rt => rt.Token).IsUnique();
+            builder.HasIndex(rt => rt.SessionId);
             builder.Property(rt => rt.ExpiresAt).IsRequired();
             builder.Property(rt => rt.RevokedAt);
             builder.Property(rt => rt.CreatedAt).IsRequired();

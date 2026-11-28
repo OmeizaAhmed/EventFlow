@@ -11,6 +11,69 @@ namespace EventFlow.IntegrationTests;
 
 public sealed partial class ProjectApiTests
 {
+    [Fact]
+    public async Task ApiKeyDetailsAndRotation_RequireTheKeyToBelongToTheRequestedProject()
+    {
+        var owner = await RegisterAndLoginAsync();
+        var first = await CreateProjectAsync(owner.Client);
+        var second = await CreateProjectAsync(owner.Client);
+        var key = await CreateKeyAsync(owner.Client, first.ProjectId);
+        var url = $"/api/projects/{second.ProjectId}/apikeys/{key.ApiKeyId}";
+        using var details = await owner.Client.GetAsync(url);
+        await AssertStatusAsync(HttpStatusCode.NotFound, details);
+        using var rotate = await owner.Client.PostAsJsonAsync($"{url}/rotate", new { IsLive = true });
+        await AssertStatusAsync(HttpStatusCode.NotFound, rotate);
+
+        await WithDatabaseAsync(async db =>
+        {
+            var stored = Assert.Single(await db.ApiKeys.AsNoTracking().ToListAsync());
+            Assert.Equal(key.ApiKeyId, stored.ApiKeyId);
+            Assert.Null(stored.RevokedAt);
+        });
+    }
+
+    [Fact]
+    public async Task RotateApiKey_RollsBackFailedWriteAndAllowsOnlyOneReplacement()
+    {
+        var owner = await RegisterAndLoginAsync();
+        var project = await CreateProjectAsync(owner.Client);
+        var key = await CreateKeyAsync(owner.Client, project.ProjectId);
+        var url = $"/api/projects/{project.ProjectId}/apikeys/{key.ApiKeyId}/rotate";
+        await WithDatabaseAsync(db => db.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER "RejectRevocationForTest" BEFORE UPDATE OF "RevokedAt" ON "ApiKeys"
+            BEGIN SELECT RAISE(ABORT, 'Simulated key revocation write failure'); END;
+            """));
+
+        using var failed = await owner.Client.PostAsJsonAsync(url, new { IsLive = true });
+        await AssertStatusAsync(HttpStatusCode.InternalServerError, failed);
+        await WithDatabaseAsync(async db =>
+        {
+            var stored = Assert.Single(await db.ApiKeys.AsNoTracking().ToListAsync());
+            Assert.Equal(key.ApiKeyId, stored.ApiKeyId);
+            Assert.Null(stored.RevokedAt);
+            await db.Database.ExecuteSqlRawAsync("""DROP TRIGGER "RejectRevocationForTest";""");
+        });
+
+        var before = DateTime.UtcNow;
+        using var rotated = await owner.Client.PostAsJsonAsync(url, new { IsLive = true });
+        await AssertStatusAsync(HttpStatusCode.OK, rotated);
+        var replacement = await ReadAsync<CreatedApiKeyResponse>(rotated);
+        using var repeated = await owner.Client.PostAsJsonAsync(url, new { IsLive = true });
+        await AssertStatusAsync(HttpStatusCode.Conflict, repeated);
+
+        await WithDatabaseAsync(async db =>
+        {
+            var keys = await db.ApiKeys.AsNoTracking().ToListAsync();
+            Assert.Equal(2, keys.Count);
+            var previous = Assert.Single(keys, row => row.ApiKeyId == key.ApiKeyId);
+            Assert.InRange(previous.RevokedAt!.Value, before.AddHours(1), DateTime.UtcNow.AddHours(1));
+            Assert.False(previous.IsRevoked);
+            var current = Assert.Single(keys, row => row.ApiKeyId == replacement.ApiKeyId);
+            Assert.Null(current.RevokedAt);
+            Assert.True(new ApiKeyService().Verify(replacement.plainTextKey, current.HashedKey));
+        });
+    }
+
     [Theory]
     [InlineData(true, "Bearer")]
     [InlineData(false, "Bearer")]

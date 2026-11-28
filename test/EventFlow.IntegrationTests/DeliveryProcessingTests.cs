@@ -6,8 +6,10 @@ using System.Security.Cryptography;
 using System.Text;
 using EventFlow.Application.DTOs;
 using EventFlow.Application.Interfaces;
+using EventFlow.Application.Notifications;
 using EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
+using EventFlow.Infrastructure.Identity;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Services;
 using Hangfire;
@@ -33,6 +35,7 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
     private readonly ManualTimeProvider _time = new();
     private readonly RecordingHandler _handler = new();
     private readonly RecordingJobClient _jobs = new();
+    private readonly RecordingEmailSender _email = new();
     private readonly HttpClient _webhookClient;
     private readonly string? _postgresAdminConnectionString;
     private readonly string? _postgresDatabaseName;
@@ -63,6 +66,8 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
             services.AddSingleton<TimeProvider>(_time);
             services.AddSingleton(provider => new DeliveryJobScheduler(() => _jobs,
                 provider.GetRequiredService<ILogger<DeliveryJobScheduler>>()));
+            services.AddSingleton<IBackgroundJobClient>(_jobs);
+            services.AddSingleton<IEmailSender>(_email);
             services.Configure<DeliveryProcessingOptions>(options => options.MaxAttempts = 3);
             services.RemoveAll<IWebhookSender>();
             services.AddScoped<IWebhookSender>(provider => new WebhookSender(
@@ -380,6 +385,102 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TerminalFailure_QueuesOneOwnerEmailAndRetriesAnSmtpFailure()
+    {
+        var seeded = await SeedAsync();
+        _handler.Enqueue(HttpStatusCode.ServiceUnavailable, "temporary");
+        _handler.Enqueue(HttpStatusCode.BadRequest, "private receiver response");
+        _email.FailNextSend = true;
+
+        Assert.True(await ProcessNextAsync());
+        await SweepNotificationsAsync();
+        Assert.DoesNotContain(_jobs.Created, job => job.Job.Type == typeof(NotificationJobs));
+
+        var retry = await ReadDeliveryAsync();
+        _time.SetUtcNow(new DateTimeOffset(DateTime.SpecifyKind(retry.NextRetryAt!.Value, DateTimeKind.Utc)));
+        Assert.True(await ProcessNextAsync());
+        var failed = await ReadDeliveryAsync();
+        Assert.Equal(DeliveryStatus.DeadLetter, failed.Status);
+        Assert.Empty(_email.Sent);
+
+        await SweepNotificationsAsync();
+        var job = Assert.Single(_jobs.Created, entry => entry.Job.Type == typeof(NotificationJobs));
+        var notificationId = Assert.IsType<Guid>(job.Job.Args[0]);
+        await DispatchNotificationAsync(notificationId);
+        await DispatchNotificationAsync(notificationId);
+        Assert.Equal(1, _email.Attempts);
+        Assert.Empty(_email.Sent);
+
+        _time.Advance(TimeSpan.FromMinutes(1));
+        await DispatchNotificationAsync(notificationId);
+        await DispatchNotificationAsync(notificationId);
+
+        var email = Assert.Single(_email.Sent);
+        Assert.Equal(seeded.OwnerEmail, email.Recipient);
+        Assert.Contains(failed.DeliveryId.ToString(), email.Text);
+        Assert.Contains("Last HTTP status: 400", email.Text);
+        Assert.DoesNotContain("private receiver response", email.Text);
+        Assert.Equal(2, _email.Attempts);
+        Assert.Equal(2, _handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task NotificationPublisher_PersistsTypedContractFromAnIndependentScope()
+    {
+        var seeded = await SeedAsync(publish: false);
+        var deliveryId = Guid.NewGuid();
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var publisher = scope.ServiceProvider.GetRequiredService<INotificationPublisher>();
+            await publisher.PublishAsync(new DeliveryFailedNotification(
+                seeded.ProjectId, deliveryId, Guid.NewGuid(), 1, null));
+        }
+
+        await SweepNotificationsAsync();
+        var job = Assert.Single(_jobs.Created, entry => entry.Job.Type == typeof(NotificationJobs));
+        await DispatchNotificationAsync(Assert.IsType<Guid>(job.Job.Args[0]));
+
+        var email = Assert.Single(_email.Sent);
+        Assert.Equal(seeded.OwnerEmail, email.Recipient);
+        Assert.Contains(deliveryId.ToString(), email.Text);
+    }
+
+    [Fact]
+    public async Task InvitationEmail_RetriesWithAnAccountBoundAcceptanceLink()
+    {
+        var seeded = await SeedAsync(publish: false);
+        ProjectInvitationResponse invitation;
+        const string inviteeEmail = "invitee@example.test";
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EventFlowDbContext>();
+            var ownerId = await db.DomainUsers.Where(user => user.Email == seeded.OwnerEmail)
+                .Select(user => user.UserId).SingleAsync();
+            var authUser = new ApplicationUser { Id = Guid.NewGuid() };
+            var invitee = DomainUser.Create(inviteeEmail, "Invited", "User", authUser.Id);
+            db.ApplicationUsers.Add(authUser);
+            db.DomainUsers.Add(invitee);
+            await db.SaveChangesAsync();
+            var projects = scope.ServiceProvider.GetRequiredService<IProjectService>();
+            invitation = await projects.InviteMemberAsync(ownerId, invitee.UserId, seeded.ProjectId);
+            Assert.False(await db.ProjectMemberships.AnyAsync(row => row.UserId == invitee.UserId));
+        }
+
+        _email.FailNextSend = true;
+        await SweepNotificationsAsync();
+        var job = Assert.Single(_jobs.Created, entry => entry.Job.Type == typeof(NotificationJobs));
+        var id = Assert.IsType<Guid>(job.Job.Args[0]);
+        await DispatchNotificationAsync(id);
+        Assert.Empty(_email.Sent);
+        _time.Advance(TimeSpan.FromMinutes(1));
+        await DispatchNotificationAsync(id);
+        var message = Assert.Single(_email.Sent);
+        Assert.Equal(inviteeEmail, message.Recipient);
+        Assert.Contains($"https://app.example.test/invitations/accept?id={invitation.InvitationId:D}", message.Text);
+        Assert.Equal(2, _email.Attempts);
+    }
+
+    [Fact]
     public async Task RepeatedTransientFailure_StopsAtConfiguredAttemptLimit()
     {
         await SeedAsync();
@@ -450,20 +551,26 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<EventFlowDbContext>();
         var signingKeys = services.GetRequiredService<ISigningKeyService>();
-        var project = Project.Create("Delivery integration", Guid.NewGuid()).Project;
+        var authUser = new ApplicationUser { Id = Guid.NewGuid() };
+        var owner = DomainUser.Create("owner@example.test", "Project", "Owner", authUser.Id);
+        var creation = Project.Create("Delivery integration", owner.UserId);
+        var project = creation.Project;
         var secret = signingKeys.GenerateSigningKey();
         var endpoint = project.RegisterEndpoint("https://receiver.example/webhook", signingKeys.Encrypt(secret), "Receiver");
         endpoint.Subscribe("order.created");
         var apiKey = services.GetRequiredService<IApiKeyService>().Generate(isLive: true);
         project.GenerateApiKey(apiKey.HashedKey, apiKey.KeyPrefix, isLive: true);
+        db.ApplicationUsers.Add(authUser);
+        db.DomainUsers.Add(owner);
         db.Projects.Add(project);
+        db.ProjectMemberships.Add(creation.Membership);
         await db.SaveChangesAsync();
         if (publish)
         {
             await services.GetRequiredService<IEventService>().CreateEventAsync(new EventInput(
                 project.ProjectId, "order.created", new { orderId = "order-42" }, Guid.NewGuid().ToString()));
         }
-        return new SeededDestination(project.ProjectId, endpoint.EndpointId, secret, apiKey.PlainTextKey);
+        return new SeededDestination(project.ProjectId, endpoint.EndpointId, secret, apiKey.PlainTextKey, owner.Email);
     }
 
     private async Task<bool> ProcessNextAsync()
@@ -478,6 +585,19 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<DeliveryJobs>().SendAsync(deliveryId, CancellationToken.None);
     }
 
+    private async Task SweepNotificationsAsync()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<NotificationJobs>().SweepAsync(CancellationToken.None);
+    }
+
+    private async Task DispatchNotificationAsync(Guid notificationId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<NotificationJobs>()
+            .DispatchAsync(notificationId, CancellationToken.None);
+    }
+
     private async Task<Delivery> ReadDeliveryAsync()
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -485,7 +605,26 @@ public sealed class DeliveryProcessingTests : IAsyncLifetime
             .AsNoTracking().Include(d => d.Event).Include(d => d.Attempts).SingleAsync();
     }
 
-    private sealed record SeededDestination(Guid ProjectId, Guid EndpointId, string Secret, string ApiKey);
+    private sealed record SeededDestination(Guid ProjectId, Guid EndpointId, string Secret, string ApiKey, string OwnerEmail);
+
+    private sealed class RecordingEmailSender : IEmailSender
+    {
+        public int Attempts { get; private set; }
+        public bool FailNextSend { get; set; }
+        public List<(string Recipient, string Text)> Sent { get; } = [];
+
+        public Task SendAsync(string recipient, string subject, string text, CancellationToken cancellationToken)
+        {
+            Attempts++;
+            if (FailNextSend)
+            {
+                FailNextSend = false;
+                throw new IOException("Temporary SMTP failure.");
+            }
+            Sent.Add((recipient, text));
+            return Task.CompletedTask;
+        }
+    }
 
     private sealed class RecordingJobClient : IBackgroundJobClient
     {

@@ -12,10 +12,22 @@ namespace EventFlow.Presentation.Api.Controllers;
 public class EventsController: ControllerBase
 {
     private readonly IEventService _eventService;
-    public EventsController(IEventService eventService)
+    private readonly ICurrentUser _currentUser;
+    public EventsController(IEventService eventService, ICurrentUser currentUser)
     {
         _eventService = eventService;
+        _currentUser = currentUser;
     }
+
+    [HttpGet]
+    [Authorize(Policy = "ValidUserId")]
+    public async Task<ActionResult<EventPage>> List(Guid projectId, [FromQuery] EventHistoryQuery query, CancellationToken ct) =>
+        Ok(await _eventService.ListAsync(projectId, _currentUser.UserId, query, ct));
+
+    [HttpGet("{eventId:guid}")]
+    [Authorize(Policy = "ValidUserId")]
+    public async Task<ActionResult<EventDetail>> Get(Guid projectId, Guid eventId, CancellationToken ct) =>
+        Ok(await _eventService.GetAsync(projectId, eventId, _currentUser.UserId, ct));
 
     [Authorize(AuthenticationSchemes = ApiKeyDefaults.Scheme, Policy = ApiKeyDefaults.LiveKeyPolicy)]
     [HttpPost]

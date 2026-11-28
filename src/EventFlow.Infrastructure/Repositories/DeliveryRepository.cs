@@ -1,7 +1,9 @@
 using EventFlow.Application.Interfaces;
+using EventFlow.Application.Notifications;
 using EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
 using EventFlow.Infrastructure.Persistence;
+using EventFlow.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventFlow.Infrastructure.Repositories;
@@ -10,7 +12,7 @@ namespace EventFlow.Infrastructure.Repositories;
 /// Owns one delivery attempt per DI scope. Claiming commits before the caller sends
 /// HTTP; the short completion transaction never spans network delivery.
 /// </summary>
-public sealed class DeliveryRepository(EventFlowDbContext context) : IDeliveryRepository
+public sealed class DeliveryRepository(EventFlowDbContext context, NotificationOutbox notifications) : IDeliveryRepository
 {
     private const int CandidateBatchSize = 16;
 
@@ -105,6 +107,12 @@ public sealed class DeliveryRepository(EventFlowDbContext context) : IDeliveryRe
 
         try
         {
+            if (delivery.Status == DeliveryStatus.DeadLetter)
+            {
+                notifications.Stage(new DeliveryFailedNotification(delivery.Event.ProjectId, delivery.DeliveryId,
+                    delivery.EventId, delivery.AttemptCount, delivery.Attempts.Last().HttpStatusCode));
+            }
+
             await context.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             return true;

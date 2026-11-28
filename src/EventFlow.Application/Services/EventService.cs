@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using EventFlow.Application.Interfaces;
 using EventFlow.Domain.Entities;
+using EventFlow.Domain.Exceptions;
 using EventFlow.Application.DTOs;
 using System.Text.Json.Nodes;
 using System.Text.Json;
@@ -13,13 +14,36 @@ public class EventService : IEventService
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEndpointRepository _endpointRepository;
+    private readonly IProjectRepository _projectRepository;
     private readonly ILogger<EventService> _logger;
 
-    public EventService(IEventRepository eventRepository, IEndpointRepository endpointRepository, ILogger<EventService>? logger = null)
+    public EventService(IEventRepository eventRepository, IEndpointRepository endpointRepository,
+        IProjectRepository projectRepository, ILogger<EventService>? logger = null)
     {
         _eventRepository = eventRepository;
         _endpointRepository = endpointRepository;
+        _projectRepository = projectRepository;
         _logger = logger ?? NullLogger<EventService>.Instance;
+    }
+
+    public async Task<EventPage> ListAsync(Guid projectId, Guid userId, EventHistoryQuery query, CancellationToken ct)
+    {
+        await RequireProjectReaderAsync(projectId, userId);
+        return await _eventRepository.ListForProjectAsync(projectId, query, ct);
+    }
+
+    public async Task<EventDetail> GetAsync(Guid projectId, Guid eventId, Guid userId, CancellationToken ct)
+    {
+        await RequireProjectReaderAsync(projectId, userId);
+        return await _eventRepository.GetForProjectAsync(projectId, eventId, ct)
+            ?? throw new NotFoundException("Event", eventId);
+    }
+
+    private async Task RequireProjectReaderAsync(Guid projectId, Guid userId)
+    {
+        var member = await _projectRepository.GetMembershipAsync(userId, projectId);
+        if (member?.CanReadProject() != true)
+            throw new NotFoundException("Project", projectId);
     }
 
     public async Task<Event> CreateEventAsync(EventInput eventInput)

@@ -40,7 +40,7 @@ public partial class ProjectServiceTests
         Assert.Equal(userId, added.Membership.UserId);
         Assert.Equal(added.Project.ProjectId, added.Membership.ProjectId);
         Assert.Equal(ProjectMembershipRole.Owner, added.Membership.Role);
-        Assert.Equal(new ProjectResponse(added.Project.ProjectId, "New project", added.Project.CreatedAt, "Owner"), result);
+        Assert.Equal(new ProjectResponse(added.Project.ProjectId, "New project", added.Project.CreatedAt, "Owner", true), result);
     }
 
     [Theory]
@@ -71,7 +71,7 @@ public partial class ProjectServiceTests
 
         var result = await _service.GetProjectByIdAsync(ProjectId, member.UserId);
 
-        Assert.Equal(new ProjectResponse(ProjectId, _creation.Project.Name, _creation.Project.CreatedAt, role.ToString()), result);
+        Assert.Equal(new ProjectResponse(ProjectId, _creation.Project.Name, _creation.Project.CreatedAt, role.ToString(), true), result);
     }
 
     [Fact]
@@ -95,14 +95,14 @@ public partial class ProjectServiceTests
     {
         _repository.UserProjects =
         [
-            new(ProjectId, "First", new DateTime(2026, 1, 1), "Owner"),
-            new(Guid.NewGuid(), "Second", new DateTime(2026, 2, 1), "ReadOnly")
+            new(ProjectId, "First", new DateTime(2026, 1, 1), "Owner", true),
+            new(Guid.NewGuid(), "Second", new DateTime(2026, 2, 1), "ReadOnly", false)
         ];
 
         var results = (await _service.GetProjectsByUserIdAsync(OwnerId)).ToArray();
 
         Assert.Equal(OwnerId, Assert.Single(_repository.UserLookups));
-        Assert.Equal(_repository.UserProjects.Select(p => new ProjectResponse(p.ProjectId, p.Name, p.CreatedAt, p.Role)), results);
+        Assert.Equal(_repository.UserProjects.Select(p => new ProjectResponse(p.ProjectId, p.Name, p.CreatedAt, p.Role, p.IsActive)), results);
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public partial class ProjectServiceTests
 
         Assert.Same(_creation.Project, Assert.Single(_repository.UpdatedProjects));
         Assert.Equal("Renamed", _creation.Project.Name);
-        Assert.Equal(new ProjectResponse(ProjectId, "Renamed", createdAt, "Admin"), result);
+        Assert.Equal(new ProjectResponse(ProjectId, "Renamed", createdAt, "Admin", true), result);
     }
 
     [Theory]
@@ -229,20 +229,22 @@ public partial class ProjectServiceTests
     [Theory]
     [InlineData(ProjectMembershipRole.Owner)]
     [InlineData(ProjectMembershipRole.Admin)]
-    public async Task InviteMemberAsync_AuthorizedInviter_PersistsReadOnlyMemberAndMapsResponse(ProjectMembershipRole role)
+    public async Task InviteMemberAsync_AuthorizedInviter_PersistsPendingReadOnlyInvitation(ProjectMembershipRole role)
     {
         var inviter = AddMember(role);
         var inviteeId = Guid.NewGuid();
 
         var result = await _service.InviteMemberAsync(inviter.UserId, inviteeId, ProjectId);
 
-        var added = Assert.Single(_repository.AddedMemberships);
-        Assert.Equal(inviteeId, added.UserId);
+        var added = Assert.Single(_repository.Invitations);
+        Assert.Empty(_repository.AddedMemberships);
+        Assert.Equal(inviteeId, added.InviteeUserId);
         Assert.Equal(ProjectId, added.ProjectId);
-        Assert.Equal(inviter.UserId, added.InvitedByUserId);
+        Assert.Equal(inviter.UserId, added.InviterUserId);
         Assert.Equal(ProjectMembershipRole.ReadOnly, added.Role);
-        Assert.True(added.IsActive);
-        Assert.Equal(new InviteMemberResponse(added.ProjectMembershipId, inviteeId, ProjectId, "ReadOnly", true, added.CreatedAt, added.UpdatedAt), result);
+        Assert.Equal(added.Id, result.InvitationId);
+        Assert.Equal("Pending", result.Status);
+        Assert.Equal(added.CreatedAt.AddDays(7), result.ExpiresAt);
     }
 
     [Fact]
@@ -258,7 +260,7 @@ public partial class ProjectServiceTests
     public async Task InviteMemberAsync_InsufficientRole_DoesNotPersist(ProjectMembershipRole role)
     {
         var inviter = AddMember(role);
-        await Assert.ThrowsAsync<ValidationException>(() => _service.InviteMemberAsync(inviter.UserId, Guid.NewGuid(), ProjectId));
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.InviteMemberAsync(inviter.UserId, Guid.NewGuid(), ProjectId));
         Assert.Empty(_repository.AddedMemberships);
     }
 
@@ -267,7 +269,7 @@ public partial class ProjectServiceTests
     {
         var inviter = AddMember(ProjectMembershipRole.Admin);
         inviter.Deactivate(_creation.Membership);
-        await Assert.ThrowsAsync<ValidationException>(() => _service.InviteMemberAsync(inviter.UserId, Guid.NewGuid(), ProjectId));
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.InviteMemberAsync(inviter.UserId, Guid.NewGuid(), ProjectId));
         Assert.Empty(_repository.AddedMemberships);
     }
 
@@ -290,8 +292,7 @@ public partial class ProjectServiceTests
     public async Task UpdateMemberRoleAsync_NonMemberModifier_DoesNotPersist()
     {
         var member = AddMember(ProjectMembershipRole.ReadOnly);
-        // The current service resolves its membershipId argument using a user-ID repository lookup.
-        await Assert.ThrowsAsync<ForbiddenException>(() => _service.UpdateMemberRoleAsync(Guid.NewGuid(), member.UserId, ProjectId, ProjectMembershipRole.Admin));
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.UpdateMemberRoleAsync(Guid.NewGuid(), member.ProjectMembershipId, ProjectId, ProjectMembershipRole.Admin));
         Assert.Equal(ProjectMembershipRole.ReadOnly, member.Role);
         Assert.Empty(_repository.UpdatedMemberships);
     }
@@ -301,7 +302,7 @@ public partial class ProjectServiceTests
     {
         var member = AddMember(ProjectMembershipRole.ReadOnly);
 
-        var result = await _service.UpdateMemberRoleAsync(OwnerId, member.UserId, ProjectId, ProjectMembershipRole.Developer);
+        var result = await _service.UpdateMemberRoleAsync(OwnerId, member.ProjectMembershipId, ProjectId, ProjectMembershipRole.Developer);
 
         Assert.Same(member, Assert.Single(_repository.UpdatedMemberships));
         Assert.Equal(ProjectMembershipRole.Developer, member.Role);
@@ -317,7 +318,7 @@ public partial class ProjectServiceTests
         var modifier = AddMember(role);
         var member = AddMember(ProjectMembershipRole.ReadOnly);
 
-        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(modifier.UserId, member.UserId, ProjectId, ProjectMembershipRole.Admin));
+        await Assert.ThrowsAsync<ForbiddenException>(() => _service.UpdateMemberRoleAsync(modifier.UserId, member.ProjectMembershipId, ProjectId, ProjectMembershipRole.Admin));
 
         Assert.Equal(ProjectMembershipRole.ReadOnly, member.Role);
         Assert.Empty(_repository.UpdatedMemberships);
@@ -327,7 +328,7 @@ public partial class ProjectServiceTests
     public async Task UpdateMemberRoleAsync_InvalidRole_DoesNotPersist()
     {
         var member = AddMember(ProjectMembershipRole.ReadOnly);
-        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, member.UserId, ProjectId, (ProjectMembershipRole)999));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, member.ProjectMembershipId, ProjectId, (ProjectMembershipRole)999));
         Assert.Equal(ProjectMembershipRole.ReadOnly, member.Role);
         Assert.Empty(_repository.UpdatedMemberships);
     }
@@ -338,7 +339,7 @@ public partial class ProjectServiceTests
         var member = AddMember(ProjectMembershipRole.ReadOnly);
         member.Deactivate(_creation.Membership);
 
-        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, member.UserId, ProjectId, ProjectMembershipRole.Admin));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, member.ProjectMembershipId, ProjectId, ProjectMembershipRole.Admin));
 
         Assert.Equal(ProjectMembershipRole.ReadOnly, member.Role);
         Assert.Empty(_repository.UpdatedMemberships);
@@ -347,7 +348,7 @@ public partial class ProjectServiceTests
     [Fact]
     public async Task UpdateMemberRoleAsync_DemotingOwner_DoesNotPersist()
     {
-        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, OwnerId, ProjectId, ProjectMembershipRole.Admin));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateMemberRoleAsync(OwnerId, _creation.Membership.ProjectMembershipId, ProjectId, ProjectMembershipRole.Admin));
 
         Assert.Equal(ProjectMembershipRole.Owner, _creation.Membership.Role);
         Assert.Empty(_repository.UpdatedMemberships);
@@ -379,6 +380,7 @@ public partial class ProjectServiceTests
     // Records writes separately from seeded data so rejected operations cannot silently persist changes.
     internal sealed class ProjectRepositoryStub : IProjectRepository
     {
+        public List<ProjectInvitation> Invitations { get; } = [];
         public List<Project> Projects { get; } = [];
         public List<ProjectMembership> Memberships { get; } = [];
         public List<ProjectWithUserRole> UserProjects { get; set; } = [];
@@ -407,7 +409,7 @@ public partial class ProjectServiceTests
         {
             MembershipLookups.Add((userId, projectId));
             var project = Projects.SingleOrDefault(p => p.ProjectId == projectId);
-            var membership = Memberships.SingleOrDefault(m => m.UserId == userId && m.ProjectId == projectId);
+            var membership = Memberships.SingleOrDefault(m => m.UserId == userId && m.ProjectId == projectId && m.IsActive);
             if (project == null || membership == null)
                 return Task.FromResult<ProjectMembership?>(null);
 
@@ -417,6 +419,35 @@ public partial class ProjectServiceTests
                 .SetValue(membership, project);
             return Task.FromResult<ProjectMembership?>(membership);
         }
+
+        public Task<ProjectMembership?> GetMembershipByIdAsync(Guid projectId, Guid membershipId) =>
+            Task.FromResult(Memberships.SingleOrDefault(m =>
+                m.ProjectId == projectId && m.ProjectMembershipId == membershipId));
+
+        public Task<IReadOnlyList<ProjectMembership>> ListMembershipsAsync(Guid projectId) =>
+            Task.FromResult<IReadOnlyList<ProjectMembership>>(Memberships.Where(m => m.ProjectId == projectId).ToArray());
+
+        public Task<bool> HasMembershipAsync(Guid projectId, Guid userId) =>
+            Task.FromResult(Memberships.Any(m => m.ProjectId == projectId && m.UserId == userId));
+
+        public Task<bool> UserExistsAsync(Guid userId) => Task.FromResult(true);
+        public Task<Guid?> FindUserIdByEmailAsync(string email) => throw new NotSupportedException();
+        public Task<ProjectInvitation?> GetInvitationAsync(Guid invitationId) => throw new NotSupportedException();
+        public Task<Guid?> GetInvitedProjectIdAsync(Guid invitationId, Guid inviteeId) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ProjectInvitation>> ListPendingInvitationsAsync(Guid projectId, DateTime now) =>
+            throw new NotSupportedException();
+        public Task<bool> HasPendingInvitationAsync(Guid projectId, Guid inviteeId, DateTime now) =>
+            Task.FromResult(Invitations.Any(invitation => invitation.ProjectId == projectId &&
+                invitation.InviteeUserId == inviteeId && invitation.StatusAt(now) == "Pending"));
+        public Task AddInvitationAsync(ProjectInvitation invitation)
+        {
+            Invitations.Add(invitation);
+            return Task.CompletedTask;
+        }
+        public Task<T> WithProjectLockAsync<T>(Guid projectId, Func<Task<T>> operation) => operation();
+
+        public Task<IReadOnlyList<EventFlow.Application.Notifications.DeliveryFailureRecipient>> GetDeliveryFailureRecipientsAsync(
+            Guid projectId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<Project> AddAsync(ProjectCreationResponse creation)
         {
@@ -453,8 +484,8 @@ public partial class ProjectServiceTests
 
         public List<ApiKey> ApiKeys { get; } = [];
         public List<ApiKey> AddedApiKeys { get; } = [];
-        public Task<ApiKey?> GetApiKeyAsync(Guid apiKeyId) =>
-            Task.FromResult(ApiKeys.SingleOrDefault(k => k.ApiKeyId == apiKeyId));
+        public Task<ApiKey?> GetApiKeyAsync(Guid projectId, Guid apiKeyId) =>
+            Task.FromResult(ApiKeys.SingleOrDefault(k => k.ProjectId == projectId && k.ApiKeyId == apiKeyId));
         public Task<ApiKey> AddApiKeyAsync(ApiKey apiKey)
         {
             ApiKeys.Add(apiKey);

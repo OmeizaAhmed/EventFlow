@@ -2,7 +2,6 @@ namespace EventFlow.Domain.Entities;
 using EventFlow.Domain.Enums;
 
 using EventFlow.Domain.Exceptions;
-using System.Runtime.CompilerServices;
 
 public class ProjectMembership
 {
@@ -48,13 +47,7 @@ public class ProjectMembership
     {
         if (userId == Guid.Empty)
             throw new ValidationException("User is required");
-        if (!this.IsActive)
-            throw new ValidationException("Host project membership is inactive");
-        if(!this.CanManageMemberships())
-            throw new ValidationException("Host project membership does not have permission to invite new members");
-
-
-        ValidateRole(role ?? ProjectMembershipRole.ReadOnly);
+        EnsureCanInvite(role ?? ProjectMembershipRole.ReadOnly);
 
         return new ProjectMembership
         {
@@ -70,84 +63,106 @@ public class ProjectMembership
         };
     }
 
-    public void UpdateRole(ProjectMembershipRole newRole, ProjectMembership Modifier)
+    internal void EnsureCanInvite(ProjectMembershipRole role)
+    {
+        if (!CanManageMemberships())
+            throw new ValidationException("Host project membership does not have permission to invite new members");
+        ValidateRole(role);
+        if (role == ProjectMembershipRole.Owner)
+            throw new ValidationException("Use ownership transfer to assign the owner role");
+        if (role == ProjectMembershipRole.Admin && Role != ProjectMembershipRole.Owner)
+            throw new ForbiddenException("Only the project owner can appoint admins");
+    }
+
+    public void UpdateRole(ProjectMembershipRole newRole, ProjectMembership modifier)
     {
         if (!IsActive)
             throw new ValidationException("Cannot update role for an inactive membership");
 
         ValidateRole(newRole);
-        // check if Modifier is valid and has permission to update the role
-        if (Modifier == null)
-            throw new ValidationException("Modifier is required");
-        if (!Modifier.CanManageMemberships())
-            throw new ValidationException("Modifier does not have permission to update the role");
-        if (Role == ProjectMembershipRole.Owner && newRole != ProjectMembershipRole.Owner)
-            throw new ValidationException("Owner role cannot be changed through a normal role update. Use transfer ownership");
+        EnsureCanModify(modifier);
+        if (Role == ProjectMembershipRole.Owner || newRole == ProjectMembershipRole.Owner)
+            throw new ValidationException("Use ownership transfer to change the project owner");
+        if (newRole == ProjectMembershipRole.Admin && modifier.Role != ProjectMembershipRole.Owner)
+            throw new ForbiddenException("Only the project owner can appoint admins");
 
         Role = newRole;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = Modifier.UserId;
+        LastModifiedByUserId = modifier.UserId;
     }
 
-    public void TransferOwnership(ProjectMembership Owner)
+    public void TransferOwnership(ProjectMembership owner)
     {
-        if (Owner.Role != ProjectMembershipRole.Owner)
-            throw new ValidationException("Only the current owner can transfer ownership");
+        if (!owner.IsActive || owner.Role != ProjectMembershipRole.Owner || owner.ProjectId != ProjectId)
+            throw new ForbiddenException("Only the active project owner can transfer ownership");
 
-        if (Role != ProjectMembershipRole.Owner && Role != ProjectMembershipRole.Admin)
-            throw new ValidationException("Ownership can only be transferred to Owner or Admin roles");
+        if (!IsActive || Role != ProjectMembershipRole.Admin)
+            throw new ValidationException("Ownership can only be transferred to an active project admin");
 
+        var now = DateTime.UtcNow;
+        owner.Role = ProjectMembershipRole.Admin;
+        owner.UpdatedAt = now;
+        owner.LastModifiedByUserId = owner.UserId;
         Role = ProjectMembershipRole.Owner;
-        UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = Owner.UserId;
+        UpdatedAt = now;
+        LastModifiedByUserId = owner.UserId;
     }
 
-    public void Deactivate(ProjectMembership Modifier)
+    public void Deactivate(ProjectMembership modifier)
     {
+        EnsureCanModify(modifier);
+        if (Role == ProjectMembershipRole.Owner)
+            throw new ValidationException("Transfer ownership before deactivating the project owner");
         if (!IsActive)
-            throw new ValidationException("Membership is already inactive");
-        if (!Modifier.CanManageMemberships())
-            throw new ValidationException("Modifier does not have permission to deactivate the membership");
+            return;
 
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = Modifier.UserId;
+        LastModifiedByUserId = modifier.UserId;
     }
 
-    public void Reactivate(ProjectMembership Modifier)
+    public void Reactivate(ProjectMembership modifier)
     {
+        EnsureCanModify(modifier);
         if (IsActive)
-            throw new ValidationException("Membership is already active");
-        if (!Modifier.CanManageMemberships())
-            throw new ValidationException("Modifier does not have permission to reactivate the membership");
+            return;
 
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
-        LastModifiedByUserId = Modifier.UserId;
+        LastModifiedByUserId = modifier.UserId;
+    }
+
+    private void EnsureCanModify(ProjectMembership modifier)
+    {
+        if (!modifier.CanManageMemberships() || modifier.ProjectId != ProjectId)
+            throw new ForbiddenException("User does not have permission to manage this membership");
+        if (Role is (ProjectMembershipRole.Owner or ProjectMembershipRole.Admin) &&
+            modifier.Role != ProjectMembershipRole.Owner)
+            throw new ForbiddenException("Only the project owner can manage owner and admin memberships");
     }
 
     public bool CanManageApiKeys()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => CanManageMemberships();
     public bool CanManageWebhooks()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => CanManageMemberships();
     
     public bool CanManageEvents()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer;
+        => IsActive && Role is ProjectMembershipRole.Owner or ProjectMembershipRole.Admin or ProjectMembershipRole.Developer;
 
     public bool CanManageEndpoints()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => CanManageMemberships();
 
     public bool CanManageMemberships()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => IsActive && Role is ProjectMembershipRole.Owner or ProjectMembershipRole.Admin;
     public bool CanDeleteProject()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => CanManageMemberships();
     public bool CanEditProject()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer;
+        => CanManageEvents();
 
     public bool CanReadProject()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin || Role == ProjectMembershipRole.Developer || Role == ProjectMembershipRole.ReadOnly;
+        => IsActive && Enum.IsDefined(Role);
     public bool CanToggleProjectStatus()
-        => Role == ProjectMembershipRole.Owner || Role == ProjectMembershipRole.Admin;
+        => CanManageMemberships();
     private static void ValidateRole(ProjectMembershipRole role)
     {
         if (!Enum.IsDefined(typeof(ProjectMembershipRole), role))

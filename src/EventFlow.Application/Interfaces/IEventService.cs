@@ -8,4 +8,6 @@ namespace EventFlow.Application.Interfaces;
 public interface IEventService
 {
     Task<Event> CreateEventAsync(EventInput input);
+    Task<EventPage> ListAsync(Guid projectId, Guid userId, EventHistoryQuery query, CancellationToken ct);
+    Task<EventDetail> GetAsync(Guid projectId, Guid eventId, Guid userId, CancellationToken ct);
 }

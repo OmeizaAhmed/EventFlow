@@ -13,22 +13,36 @@ public class EntityRelationshipTests
             .Options);
 
     [Fact]
-    public void DomainRelationships_HaveNoShadowForeignKeysOrUnpairedNavigations()
+    public void DomainRelationships_UseExplicitForeignKeysAndPairAggregateNavigations()
     {
         using var context = CreateContext();
         var entities = context.Model.GetEntityTypes()
             .Where(e => e.ClrType.Namespace == typeof(Project).Namespace).ToArray();
 
-        Assert.Equal(14, entities.Sum(e => e.GetForeignKeys().Count()));
+        Assert.Equal(17, entities.Sum(e => e.GetForeignKeys().Count()));
         foreach (var entity in entities)
         {
             Assert.DoesNotContain(entity.GetProperties(), p => p.IsShadowProperty());
+            // Invitations are queried by ID and project key without loading collections onto users or projects.
+            if (entity.ClrType == typeof(ProjectInvitation))
+                continue;
+
             foreach (var relationship in entity.GetForeignKeys())
             {
                 Assert.NotNull(relationship.PrincipalToDependent);
                 if (relationship.PrincipalEntityType.ClrType != typeof(ApplicationUser))
                     Assert.NotNull(relationship.DependentToPrincipal);
             }
+        }
+
+        var invitation = context.Model.FindEntityType(typeof(ProjectInvitation))!;
+        var invitationKeys = invitation.GetForeignKeys().ToDictionary(key => Assert.Single(key.Properties).Name);
+        Assert.Equal(3, invitationKeys.Count);
+        Assert.Equal(typeof(Project), invitationKeys[nameof(ProjectInvitation.ProjectId)].PrincipalEntityType.ClrType);
+        foreach (var name in new[] { nameof(ProjectInvitation.InviteeUserId), nameof(ProjectInvitation.InviterUserId) })
+        {
+            Assert.Equal(typeof(DomainUser), invitationKeys[name].PrincipalEntityType.ClrType);
+            Assert.Equal(DeleteBehavior.Restrict, invitationKeys[name].DeleteBehavior);
         }
 
         var token = context.Model.FindEntityType(typeof(RefreshToken))!;

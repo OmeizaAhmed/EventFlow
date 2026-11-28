@@ -10,10 +10,12 @@ namespace EventFlow.Presentation.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ICurrentUser _currentUser;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ICurrentUser currentUser)
     {
         _authService = authService;
+        _currentUser = currentUser;
     }
 
     [HttpPost("register")]
@@ -40,16 +42,28 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
         var auth = await _authService.RefreshTokenAsync(refreshToken);
+        if (auth is null)
+            return Unauthorized();
+
         AddRefreshCookies(auth.RefreshToken, Response);
         return Ok(new { Token = auth.AccessToken });
     }
 
     [HttpPost("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
+        var refreshToken = GetRefreshTokenFromCookies(Request);
+        if (!string.IsNullOrEmpty(refreshToken))
+            await _authService.LogoutAsync(refreshToken);
+
         RemoveRefreshCookies(Response);
         return Ok();
     }
+
+    [HttpGet("me")]
+    [Authorize(Policy = "ValidUserId")]
+    public async Task<ActionResult<AuthUserResponse>> Me() =>
+        Ok(await _authService.GetCurrentUserAsync(_currentUser.UserId));
 
     [HttpGet("secure")]
     [Authorize]

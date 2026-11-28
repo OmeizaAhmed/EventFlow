@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using EventFlow.Application.Interfaces;
+using EventFlow.Application.DTOs;
 using EventFlow.Domain.Entities;
 using EventFlow.Infrastructure.Persistence;
 using EventFlow.Infrastructure.Services;
@@ -36,6 +37,26 @@ public class EventRepository : IEventRepository
     {
         return await _context.Events.FindAsync(eventId);
     }
+
+    public async Task<EventPage> ListForProjectAsync(Guid projectId, EventHistoryQuery query, CancellationToken ct)
+    {
+        var events = _context.Events.AsNoTracking().Where(evt => evt.ProjectId == projectId);
+        if (query.EventType is { } eventType)
+            events = events.Where(evt => evt.EventType == eventType);
+
+        var total = await events.CountAsync(ct);
+        var items = await events.OrderByDescending(evt => evt.CreatedAt).ThenBy(evt => evt.EventId)
+            .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
+            .Select(evt => new EventSummary(evt.EventId, evt.ProjectId, evt.EventType, evt.CreatedAt, evt.Deliveries.Count))
+            .ToListAsync(ct);
+        return new EventPage(items, total, query.Page, query.PageSize);
+    }
+
+    public Task<EventDetail?> GetForProjectAsync(Guid projectId, Guid eventId, CancellationToken ct) =>
+        _context.Events.AsNoTracking().Where(evt => evt.ProjectId == projectId && evt.EventId == eventId)
+            .Select(evt => new EventDetail(evt.EventId, evt.ProjectId, evt.EventType, evt.CreatedAt,
+                evt.Deliveries.Count, evt.Payload))
+            .SingleOrDefaultAsync(ct);
 
     public async Task<IEnumerable<Event>> GetEventsByProjectIdAsync(Guid projectId)
     {

@@ -5,6 +5,6 @@ public interface IRefreshRepository
 {
     Task AddRefreshTokenAsync(RefreshToken refreshToken);
     Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken);
-    Task DeleteRefreshTokenAsync(string refreshToken);
-    Task SaveChangesAsync();
+    Task<bool> RotateRefreshTokenAsync(RefreshToken current, RefreshToken replacement);
+    Task RevokeRefreshSessionAsync(string refreshToken);
 }

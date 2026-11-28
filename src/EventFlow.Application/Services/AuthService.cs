@@ -55,16 +55,7 @@ public class AuthService : IAuthService
         }
 
         var user = await _userRepository.GetUserByEmailAsync(email);
-        var userInfo = new UserInfo
-        {
-            UserId = user.UserId,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            AuthId = user.AuthId,
-            Roles = await _identityRepository.GetIdentityRolesAsync(user.AuthId)
-        };
-        // create refresh token for the user
+        var userInfo = await GetUserInfoAsync(user);
         var refreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7));
         await _refreshRepository.AddRefreshTokenAsync(refreshToken);
         _logger.LogInformation("User {UserId} signed in", userInfo.UserId);
@@ -74,35 +65,44 @@ public class AuthService : IAuthService
         return new AuthOutput(accessToken, refreshToken.Token); 
     }
 
-    public async Task<AuthOutput> RefreshTokenAsync(string refreshToken)
+    public async Task<AuthOutput?> RefreshTokenAsync(string refreshToken)
     {
         var existingRefreshToken = await _refreshRepository.GetRefreshTokenAsync(refreshToken);
-        if (existingRefreshToken == null || existingRefreshToken.ExpiresAt < DateTime.UtcNow || existingRefreshToken.RevokedAt != null)
+        if (existingRefreshToken is null || existingRefreshToken.ExpiresAt <= DateTime.UtcNow ||
+            existingRefreshToken.RevokedAt is not null)
         {
             _logger.LogWarning("Refresh token rejected");
-            throw new ValidationException("Invalid or expired refresh token");
+            return null;
         }
-        var user = await _userRepository.GetUserByIdAsync(existingRefreshToken.UserId);
-        var userInfo = new UserInfo
-        {
-            UserId = user.UserId,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            AuthId = user.AuthId,
-            Roles = await _identityRepository.GetIdentityRolesAsync(user.AuthId)
-        };
-        // use the refresh token
-        existingRefreshToken.Use();
-        await _refreshRepository.SaveChangesAsync();
 
-        // generate new refresh token
-        var newRefreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7));
-        await _refreshRepository.AddRefreshTokenAsync(newRefreshToken);
+        var user = await _userRepository.GetUserByIdAsync(existingRefreshToken.UserId);
+        var userInfo = await GetUserInfoAsync(user);
+        var newRefreshToken = RefreshToken.Create(userInfo.UserId, Guid.NewGuid().ToString(), DateTime.UtcNow.AddDays(7),
+            existingRefreshToken.SessionId ?? existingRefreshToken.Id);
+        var accessToken = _tokenService.GenerateToken(userInfo);
+        if (!await _refreshRepository.RotateRefreshTokenAsync(existingRefreshToken, newRefreshToken))
+            return null;
+
         _logger.LogInformation("User {UserId} refreshed authentication", userInfo.UserId);
-        return new AuthOutput(_tokenService.GenerateToken(userInfo), newRefreshToken.Token);
+        return new AuthOutput(accessToken, newRefreshToken.Token);
     }
 
-    
-   
+    public Task LogoutAsync(string refreshToken) => _refreshRepository.RevokeRefreshSessionAsync(refreshToken);
+
+    public async Task<AuthUserResponse> GetCurrentUserAsync(Guid userId)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        var profile = await GetUserInfoAsync(user);
+        return new(profile.UserId, profile.Email, profile.FirstName, profile.LastName, profile.Roles.ToArray());
+    }
+
+    private async Task<UserInfo> GetUserInfoAsync(DomainUser user) => new()
+    {
+        UserId = user.UserId,
+        Email = user.Email,
+        FirstName = user.FirstName,
+        LastName = user.LastName,
+        AuthId = user.AuthId,
+        Roles = await _identityRepository.GetIdentityRolesAsync(user.AuthId)
+    };
 }
